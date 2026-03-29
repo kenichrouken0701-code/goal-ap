@@ -1,5 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
+import { 
+  Calendar, 
+  Clock, 
+  Target, 
+  LayoutDashboard, 
+  Zap, 
+  Copy, 
+  Check, 
+  ChevronRight,
+  Save,
+  Trash2,
+  Info
+} from 'lucide-react';
 
 // --- Helpers & Constants ---
 const generateInitialSchedule = () => {
@@ -37,10 +50,7 @@ const generateInitialMandalaData = () => {
 
 const getToday = () => {
   const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}/${m}/${day}`;
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
 };
 
 const getWeekRange = () => {
@@ -102,7 +112,7 @@ export default function Home() {
 
   // --- LocalStorage Persistence ---
   useEffect(() => {
-    const savedData = localStorage.getItem('goal_layer_data');
+    const savedData = localStorage.getItem('goal_layer_data_v2');
     if (savedData) {
       try {
         const parsed = JSON.parse(savedData);
@@ -144,7 +154,7 @@ export default function Home() {
           setMandalaSubGoals(parsed.mandala.subGoals || generateInitialMandalaData());
         }
       } catch (e) {
-        console.error("Failed to load data from localStorage", e);
+        console.error("Failed to load data", e);
       }
     }
     setIsLoaded(true);
@@ -159,7 +169,7 @@ export default function Home() {
       year: { val: yearVal, idealState: yearIdealState, goal: yearGoal, teamTarget: yearTeamTarget, teamResult: yearTeamResult, achievement: yearAchievement, goodPoints: yearGoodPoints, improvement: yearImprovement, nextAction: yearNextAction },
       mandala: { date: mandalaDate, centerGoal: mandalaCenterGoal, subGoals: mandalaSubGoals }
     };
-    localStorage.setItem('goal_layer_data', JSON.stringify(dataToSave));
+    localStorage.setItem('goal_layer_data_v2', JSON.stringify(dataToSave));
   }, [
     isLoaded, dayDate, dayGoal, daySchedule, dayAchievement, dayGoodThings, dayRedo,
     weekRange, weekGoal, weekDays, weekGoodFlow, weekImprovement, weekNextAction,
@@ -205,6 +215,13 @@ export default function Home() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const resetData = () => {
+    if (window.confirm("現在の入力内容をすべて消去しますか？")) {
+      localStorage.removeItem('goal_layer_data_v2');
+      window.location.reload();
+    }
+  };
+
   // --- Summaries ---
   const daySummary = () => {
     const scheduleText = daySchedule.filter(i => i.content.trim() !== '').map(i => `${i.time} ${i.content}`).join('\n');
@@ -231,337 +248,370 @@ export default function Home() {
     return `■作成日\n${mandalaDate}\n\n■最終目標\n${mandalaCenterGoal}\n\n■戦略（中目標）\n\n${strategyText}\n\n■行動プラン\n\n${actionPlanText}`;
   };
 
-  // --- Render Content ---
+  // --- Render Helpers ---
   const renderTabContent = () => {
-    if (activeTab === '1日') {
-      return (
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="flex-1 space-y-8">
-            <section className="space-y-4">
-              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">基本情報</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">日付</label>
-                  <input type="text" value={dayDate} onChange={(e) => setDayDate(e.target.value)} className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">1日の目標を設定する</label>
-                  <textarea value={dayGoal} onChange={(e) => setDayGoal(e.target.value)} placeholder="今日一番達成したいことは？" className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-24 resize-none" />
-                </div>
-              </div>
-            </section>
-            <section className="space-y-4">
-              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">タイムスケジュール</h3>
-              <div className="bg-gray-50 p-4 rounded-xl border space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
-                {daySchedule.map((item, index) => (
-                  <div key={item.time} className="flex items-center gap-3">
-                    <span className="w-12 text-sm font-mono text-gray-400">{item.time}</span>
-                    <input type="text" value={item.content} onChange={(e) => handleDayScheduleChange(index, e.target.value)} className="flex-1 p-2 border rounded bg-white text-sm outline-none" placeholder="予定を入力" />
-                  </div>
-                ))}
-              </div>
-            </section>
-            <section className="space-y-4">
-              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">振り返り</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">達成度</label>
-                  <input type="text" value={dayAchievement} onChange={(e) => setDayAchievement(e.target.value)} placeholder="◎ / ○ / △ / ×" className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">良かったこと</label>
-                  <textarea value={dayGoodThings} onChange={(e) => setDayGoodThings(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-20 resize-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">今日1日やり直せるなら</label>
-                  <textarea value={dayRedo} onChange={(e) => setDayRedo(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-20 resize-none" />
-                </div>
-              </div>
-            </section>
-          </div>
-          <div className="lg:w-[400px] w-full">
-            <div className="sticky top-24 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Preview</h3>
-                <button onClick={() => copyToClipboard(daySummary())} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${copied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg'}`}>{copied ? 'Copied!' : 'Copy Summary'}</button>
-              </div>
-              <div className="bg-gray-900 text-gray-100 p-6 rounded-2xl shadow-xl font-mono text-sm whitespace-pre-wrap border border-gray-700 min-h-[500px] leading-relaxed">{daySummary()}</div>
-            </div>
-          </div>
-        </div>
-      );
-    }
+    let summary = "";
+    let content = null;
 
-    if (activeTab === '1週間') {
-      return (
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="flex-1 space-y-8">
-            <section className="space-y-4">
-              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">基本設定</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">期間</label>
-                  <input type="text" value={weekRange} onChange={(e) => setWeekRange(e.target.value)} className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">今週の目標を設定する</label>
-                  <textarea value={weekGoal} onChange={(e) => setWeekGoal(e.target.value)} placeholder="今週のメインテーマは？" className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-24 resize-none" />
-                </div>
+    switch (activeTab) {
+      case '1日':
+        summary = daySummary();
+        content = (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 text-blue-600 mb-2">
+                <Target size={20} />
+                <h3 className="font-bold">基本情報</h3>
               </div>
-            </section>
-            <section className="space-y-4">
-              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">週間カレンダー</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                {weekDays.map((d, idx) => (
-                  <div key={d.day} className="p-4 bg-gray-50 border rounded-xl space-y-3">
-                    <div className="text-center font-black text-blue-600 border-b pb-1 mb-2">{d.day}</div>
-                    <div className="space-y-2">
-                      <input type="text" value={d.goal} onChange={(e) => handleWeekDayChange(idx, 'goal', e.target.value)} placeholder="その日の目標" className="w-full p-2 text-xs border rounded bg-white outline-none" />
-                      <input type="text" value={d.task} onChange={(e) => handleWeekDayChange(idx, 'task', e.target.value)} placeholder="最重要タスク" className="w-full p-2 text-xs border rounded bg-white outline-none" />
-                      <input type="text" value={d.rating} onChange={(e) => handleWeekDayChange(idx, 'rating', e.target.value)} placeholder="達成度 (◎/○/△/×)" className="w-full p-2 text-xs border rounded bg-white outline-none" />
-                      <textarea value={d.memo} onChange={(e) => handleWeekDayChange(idx, 'memo', e.target.value)} placeholder="一言メモ" className="w-full p-2 text-xs border rounded bg-white outline-none h-16 resize-none" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-            <section className="space-y-4">
-              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">振り返り・来週への展望</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">良かった流れ</label>
-                  <textarea value={weekGoodFlow} onChange={(e) => setWeekGoodFlow(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-20 resize-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">改善ポイント</label>
-                  <textarea value={weekImprovement} onChange={(e) => setWeekImprovement(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-20 resize-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">来週のアクション</label>
-                  <textarea value={weekNextAction} onChange={(e) => setWeekNextAction(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-20 resize-none" />
-                </div>
-              </div>
-            </section>
-          </div>
-          <div className="lg:w-[400px] w-full">
-            <div className="sticky top-24 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Weekly Preview</h3>
-                <button onClick={() => copyToClipboard(weekSummary())} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${copied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg'}`}>{copied ? 'Copied!' : 'Copy Summary'}</button>
-              </div>
-              <div className="bg-gray-900 text-gray-100 p-6 rounded-2xl shadow-xl font-mono text-sm whitespace-pre-wrap border border-gray-700 min-h-[500px] leading-relaxed">{weekSummary()}</div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (activeTab === '1ヵ月') {
-      return (
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="flex-1 space-y-8">
-            <section className="space-y-4">
-              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">年間概況設定</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">年</label>
-                  <input type="text" value={monthYear} onChange={(e) => setMonthYear(e.target.value)} placeholder="YYYY" className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">年間目標</label>
-                  <textarea value={monthAnnualGoal} onChange={(e) => setMonthAnnualGoal(e.target.value)} placeholder="今年のメインゴール" className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-24 resize-none" />
-                </div>
-              </div>
-            </section>
-            <section className="space-y-4">
-              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">月別カレンダー</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {monthsData.map((m, idx) => (
-                  <div key={m.month} className="p-4 bg-gray-50 border rounded-xl space-y-2">
-                    <div className="text-center font-black text-purple-600 border-b pb-1 mb-2">{m.month}</div>
-                    <div className="space-y-1">
-                      <input type="text" value={m.goal} onChange={(e) => handleMonthDataChange(idx, 'goal', e.target.value)} placeholder="月の目標" className="w-full p-1.5 text-[10px] border rounded bg-white outline-none" />
-                      <div className="flex gap-1">
-                        <input type="text" value={m.teamTarget} onChange={(e) => handleMonthDataChange(idx, 'teamTarget', e.target.value)} placeholder="人数(目)" className="w-1/2 p-1.5 text-[10px] border rounded bg-white outline-none" />
-                        <input type="text" value={m.teamResult} onChange={(e) => handleMonthDataChange(idx, 'teamResult', e.target.value)} placeholder="人数(結)" className="w-1/2 p-1.5 text-[10px] border rounded bg-white outline-none" />
-                      </div>
-                      <input type="text" value={m.theme} onChange={(e) => handleMonthDataChange(idx, 'theme', e.target.value)} placeholder="テーマ" className="w-full p-1.5 text-[10px] border rounded bg-white outline-none" />
-                      <input type="text" value={m.rating} onChange={(e) => handleMonthDataChange(idx, 'rating', e.target.value)} placeholder="達成度" className="w-full p-1.5 text-[10px] border rounded bg-white outline-none" />
-                      <textarea value={m.reflection} onChange={(e) => handleMonthDataChange(idx, 'reflection', e.target.value)} placeholder="一言振り返り" className="w-full p-1.5 text-[10px] border rounded bg-white outline-none h-12 resize-none" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
-          <div className="lg:w-[400px] w-full">
-            <div className="sticky top-24 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Preview</h3>
-                <button onClick={() => copyToClipboard(monthSummary())} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${copied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg'}`}>{copied ? 'Copied!' : 'Copy Summary'}</button>
-              </div>
-              <div className="bg-gray-900 text-gray-100 p-6 rounded-2xl shadow-xl font-mono text-sm whitespace-pre-wrap border border-gray-700 min-h-[500px] max-h-[70vh] overflow-y-auto leading-relaxed custom-scrollbar">{monthSummary()}</div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (activeTab === '1年') {
-      return (
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="flex-1 space-y-8">
-            <section className="space-y-4">
-              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">年間設定</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">年</label>
-                  <input type="text" value={yearVal} onChange={(e) => setYearVal(e.target.value)} placeholder="YYYY" className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">どういう状態になりたいか</label>
-                  <textarea value={yearIdealState} onChange={(e) => setYearIdealState(e.target.value)} placeholder="1年後の理想像を記述" className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-24 resize-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">年間目標</label>
-                  <textarea value={yearGoal} onChange={(e) => setYearGoal(e.target.value)} placeholder="具体的に達成したい数値や状態" className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-24 resize-none" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">チーム人数 (目標)</label>
-                    <input type="text" value={yearTeamTarget} onChange={(e) => setYearTeamTarget(e.target.value)} className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">チーム人数 (結果)</label>
-                    <input type="text" value={yearTeamResult} onChange={(e) => setYearTeamResult(e.target.value)} className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
-                  </div>
-                </div>
-              </div>
-            </section>
-            <section className="space-y-4">
-              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">年間総括</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">達成度</label>
-                  <input type="text" value={yearAchievement} onChange={(e) => setYearAchievement(e.target.value)} placeholder="◎ / ○ / △ / ×" className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">良かった点</label>
-                  <textarea value={yearGoodPoints} onChange={(e) => setYearGoodPoints(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-24 resize-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">改善点</label>
-                  <textarea value={yearImprovement} onChange={(e) => setYearImprovement(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-24 resize-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">来年のアクション</label>
-                  <textarea value={yearNextAction} onChange={(e) => setYearNextAction(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-24 resize-none" />
-                </div>
-              </div>
-            </section>
-          </div>
-          <div className="lg:w-[400px] w-full">
-            <div className="sticky top-24 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Yearly Preview</h3>
-                <button onClick={() => copyToClipboard(yearSummary())} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${copied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg'}`}>{copied ? 'Copied!' : 'Copy Summary'}</button>
-              </div>
-              <div className="bg-gray-900 text-gray-100 p-6 rounded-2xl shadow-xl font-mono text-sm whitespace-pre-wrap border border-gray-700 min-h-[500px] leading-relaxed">{yearSummary()}</div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (activeTab === 'マンダラ') {
-      return (
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="flex-1 space-y-8">
-            <section className="space-y-4">
-              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">マンダラチャート設定</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">作成日</label>
-                  <input type="text" value={mandalaDate} onChange={(e) => setMandalaDate(e.target.value)} className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-400 uppercase ml-1">日付</label>
+                  <input type="text" value={dayDate} onChange={(e) => setDayDate(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">最終目標 (中央)</label>
-                  <input type="text" value={mandalaCenterGoal} onChange={(e) => setMandalaCenterGoal(e.target.value)} placeholder="成し遂げたいこと" className="w-full p-2 border rounded-lg bg-blue-50 border-blue-200 outline-none font-bold" />
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-400 uppercase ml-1">1日の目標</label>
+                  <textarea value={dayGoal} onChange={(e) => setDayGoal(e.target.value)} placeholder="今日一番達成したいことは？" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none transition-all" />
                 </div>
               </div>
             </section>
-            <section className="space-y-6">
-              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">戦略と行動プラン</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {mandalaSubGoals.map((sg, sgIdx) => (
-                  <div key={sgIdx} className="p-5 bg-gray-50 border rounded-2xl space-y-4 shadow-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="flex items-center justify-center w-6 h-6 bg-blue-600 text-white rounded-full text-xs font-bold">{CIRCLE_NUMBERS[sgIdx]}</span>
-                      <input type="text" value={sg.goal} onChange={(e) => handleMandalaSubGoalChange(sgIdx, e.target.value)} placeholder={`中目標 ${sgIdx + 1}`} className="flex-1 p-2 text-sm font-bold border-b bg-transparent outline-none focus:border-blue-500" />
+
+            <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 text-orange-500 mb-2">
+                <Clock size={20} />
+                <h3 className="font-bold">タイムスケジュール</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                {daySchedule.map((item, index) => (
+                  <div key={item.time} className="flex items-center gap-3 py-1 border-b border-gray-50">
+                    <span className="w-12 text-xs font-mono text-gray-400">{item.time}</span>
+                    <input type="text" value={item.content} onChange={(e) => handleDayScheduleChange(index, e.target.value)} className="flex-1 p-2 text-sm bg-transparent border-none focus:bg-blue-50 rounded-lg outline-none transition-all" placeholder="..." />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 text-green-600 mb-2">
+                <Zap size={20} />
+                <h3 className="font-bold">振り返り</h3>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-400 uppercase ml-1">達成度 (◎/○/△/×)</label>
+                  <input type="text" value={dayAchievement} onChange={(e) => setDayAchievement(e.target.value)} placeholder="◎" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-400 uppercase ml-1">良かったこと</label>
+                  <textarea value={dayGoodThings} onChange={(e) => setDayGoodThings(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none h-20 resize-none transition-all" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-400 uppercase ml-1">やり直せるなら</label>
+                  <textarea value={dayRedo} onChange={(e) => setDayRedo(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none h-20 resize-none transition-all" />
+                </div>
+              </div>
+            </section>
+          </div>
+        );
+        break;
+
+      case '1週間':
+        summary = weekSummary();
+        content = (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 text-blue-600 mb-2">
+                <Calendar size={20} />
+                <h3 className="font-bold">週間設定</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-400 uppercase ml-1">期間</label>
+                  <input type="text" value={weekRange} onChange={(e) => setWeekRange(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-400 uppercase ml-1">今週の目標</label>
+                  <textarea value={weekGoal} onChange={(e) => setWeekGoal(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none h-24 resize-none" />
+                </div>
+              </div>
+            </section>
+            <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4 overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-2 text-orange-500 mb-2">
+                <LayoutDashboard size={20} />
+                <h3 className="font-bold">デイリーログ</h3>
+              </div>
+              <div className="flex gap-4 min-w-[800px] pb-2">
+                {weekDays.map((d, idx) => (
+                  <div key={d.day} className="flex-1 min-w-[150px] p-4 bg-gray-50 rounded-2xl space-y-3 border border-gray-100">
+                    <div className="text-center font-black text-blue-600 border-b border-blue-100 pb-1">{d.day}</div>
+                    <input type="text" value={d.goal} onChange={(e) => handleWeekDayChange(idx, 'goal', e.target.value)} placeholder="目標" className="w-full p-2 text-[10px] border rounded-lg bg-white outline-none" />
+                    <input type="text" value={d.task} onChange={(e) => handleWeekDayChange(idx, 'task', e.target.value)} placeholder="タスク" className="w-full p-2 text-[10px] border rounded-lg bg-white outline-none" />
+                    <input type="text" value={d.rating} onChange={(e) => handleWeekDayChange(idx, 'rating', e.target.value)} placeholder="達成度" className="w-full p-2 text-[10px] border rounded-lg bg-white outline-none" />
+                    <textarea value={d.memo} onChange={(e) => handleWeekDayChange(idx, 'memo', e.target.value)} placeholder="メモ" className="w-full p-2 text-[10px] border rounded-lg bg-white outline-none h-16 resize-none" />
+                  </div>
+                ))}
+              </div>
+            </section>
+            <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 text-green-600 mb-2">
+                <Zap size={20} />
+                <h3 className="font-bold">振り返り</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <textarea value={weekGoodFlow} onChange={(e) => setWeekGoodFlow(e.target.value)} placeholder="良かった流れ" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none h-24 resize-none" />
+                <textarea value={weekImprovement} onChange={(e) => setWeekImprovement(e.target.value)} placeholder="改善ポイント" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none h-24 resize-none" />
+                <textarea value={weekNextAction} onChange={(e) => setWeekNextAction(e.target.value)} placeholder="来週のアクション" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none h-24 resize-none" />
+              </div>
+            </section>
+          </div>
+        );
+        break;
+
+      case '1ヵ月':
+        summary = monthSummary();
+        content = (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 text-blue-600 mb-2">
+                <Calendar size={20} />
+                <h3 className="font-bold">年間概況</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" value={monthYear} onChange={(e) => setMonthYear(e.target.value)} placeholder="年" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none" />
+                <textarea value={monthAnnualGoal} onChange={(e) => setMonthAnnualGoal(e.target.value)} placeholder="年間目標" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none h-24 resize-none" />
+              </div>
+            </section>
+            <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 text-purple-600 mb-2">
+                <LayoutDashboard size={20} />
+                <h3 className="font-bold">月別ログ</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {monthsData.map((m, idx) => (
+                  <div key={m.month} className="p-4 bg-gray-50 rounded-2xl space-y-2 border border-gray-100">
+                    <div className="text-center font-black text-purple-600 border-b border-purple-100 pb-1 mb-2">{m.month}</div>
+                    <input type="text" value={m.goal} onChange={(e) => handleMonthDataChange(idx, 'goal', e.target.value)} placeholder="目標" className="w-full p-2 text-[10px] border rounded-lg bg-white outline-none" />
+                    <div className="flex gap-1">
+                      <input type="text" value={m.teamTarget} onChange={(e) => handleMonthDataChange(idx, 'teamTarget', e.target.value)} placeholder="目" className="w-1/2 p-2 text-[10px] border rounded-lg bg-white outline-none" />
+                      <input type="text" value={m.teamResult} onChange={(e) => handleMonthDataChange(idx, 'teamResult', e.target.value)} placeholder="結" className="w-1/2 p-2 text-[10px] border rounded-lg bg-white outline-none" />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase">行動リスト</label>
-                      {sg.actions.map((action, aIdx) => (
-                        <div key={aIdx} className="flex items-center gap-2">
-                          <span className="text-[10px] text-gray-300">{aIdx + 1}</span>
-                          <input type="text" value={action} onChange={(e) => handleMandalaActionChange(sgIdx, aIdx, e.target.value)} placeholder="具体的なアクション" className="flex-1 p-1.5 text-xs border rounded bg-white outline-none" />
-                        </div>
-                      ))}
-                    </div>
+                    <input type="text" value={m.theme} onChange={(e) => handleMonthDataChange(idx, 'theme', e.target.value)} placeholder="テーマ" className="w-full p-2 text-[10px] border rounded-lg bg-white outline-none" />
+                    <input type="text" value={m.rating} onChange={(e) => handleMonthDataChange(idx, 'rating', e.target.value)} placeholder="達成度" className="w-full p-2 text-[10px] border rounded-lg bg-white outline-none" />
+                    <textarea value={m.reflection} onChange={(e) => handleMonthDataChange(idx, 'reflection', e.target.value)} placeholder="振り返り" className="w-full p-2 text-[10px] border rounded-lg bg-white outline-none h-12 resize-none" />
                   </div>
                 ))}
               </div>
             </section>
           </div>
-          <div className="lg:w-[400px] w-full">
-            <div className="sticky top-24 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Mandala Preview</h3>
-                <button onClick={() => copyToClipboard(mandalaSummary())} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${copied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg'}`}>{copied ? 'Copied!' : 'Copy Summary'}</button>
+        );
+        break;
+
+      case '1年':
+        summary = yearSummary();
+        content = (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 text-blue-600 mb-2">
+                <Target size={20} />
+                <h3 className="font-bold">年間ビジョン</h3>
               </div>
-              <div className="bg-gray-900 text-gray-100 p-6 rounded-2xl shadow-xl font-mono text-sm whitespace-pre-wrap border border-gray-700 min-h-[500px] max-h-[70vh] overflow-y-auto leading-relaxed custom-scrollbar">{mandalaSummary()}</div>
+              <div className="grid grid-cols-1 gap-4">
+                <input type="text" value={yearVal} onChange={(e) => setYearVal(e.target.value)} placeholder="年" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none" />
+                <textarea value={yearIdealState} onChange={(e) => setYearIdealState(e.target.value)} placeholder="どういう状態になりたいか" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none h-24 resize-none" />
+                <textarea value={yearGoal} onChange={(e) => setYearGoal(e.target.value)} placeholder="年間目標" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none h-24 resize-none" />
+                <div className="grid grid-cols-2 gap-4">
+                  <input type="text" value={yearTeamTarget} onChange={(e) => setYearTeamTarget(e.target.value)} placeholder="チーム人数(目標)" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none" />
+                  <input type="text" value={yearTeamResult} onChange={(e) => setYearTeamResult(e.target.value)} placeholder="チーム人数(結果)" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none" />
+                </div>
+              </div>
+            </section>
+            <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 text-green-600 mb-2">
+                <Zap size={20} />
+                <h3 className="font-bold">年間総括</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" value={yearAchievement} onChange={(e) => setYearAchievement(e.target.value)} placeholder="達成度" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none" />
+                <textarea value={yearGoodPoints} onChange={(e) => setYearGoodPoints(e.target.value)} placeholder="良かった点" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none h-24 resize-none" />
+                <textarea value={yearImprovement} onChange={(e) => setYearImprovement(e.target.value)} placeholder="改善点" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none h-24 resize-none" />
+                <textarea value={yearNextAction} onChange={(e) => setYearNextAction(e.target.value)} placeholder="来年のアクション" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none h-24 resize-none" />
+              </div>
+            </section>
+          </div>
+        );
+        break;
+
+      case 'マンダラ':
+        summary = mandalaSummary();
+        content = (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 text-blue-600 mb-2">
+                <Zap size={20} />
+                <h3 className="font-bold">マンダラチャート設定</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" value={mandalaDate} onChange={(e) => setMandalaDate(e.target.value)} placeholder="作成日" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none" />
+                <input type="text" value={mandalaCenterGoal} onChange={(e) => setMandalaCenterGoal(e.target.value)} placeholder="最終目標 (中央)" className="w-full p-3 bg-blue-50 border border-blue-200 rounded-xl outline-none font-bold text-blue-900" />
+              </div>
+            </section>
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {mandalaSubGoals.map((sg, sgIdx) => (
+                <div key={sgIdx} className="p-6 bg-white border border-gray-100 rounded-3xl shadow-sm space-y-4">
+                  <div className="flex items-center gap-3 border-b border-gray-50 pb-3">
+                    <span className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full text-sm font-black">{CIRCLE_NUMBERS[sgIdx]}</span>
+                    <input type="text" value={sg.goal} onChange={(e) => handleMandalaSubGoalChange(sgIdx, e.target.value)} placeholder={`中目標 ${sgIdx + 1}`} className="flex-1 p-1 text-lg font-black bg-transparent border-none outline-none focus:text-blue-600 transition-colors" />
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {sg.actions.map((action, aIdx) => (
+                      <div key={aIdx} className="flex items-center gap-3 group">
+                        <span className="text-[10px] font-bold text-gray-300 group-focus-within:text-blue-400 transition-colors">{aIdx + 1}</span>
+                        <input type="text" value={action} onChange={(e) => handleMandalaActionChange(sgIdx, aIdx, e.target.value)} placeholder="アクション" className="flex-1 p-2 text-sm bg-gray-50 border border-transparent focus:border-blue-100 focus:bg-white rounded-xl outline-none transition-all" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </section>
+          </div>
+        );
+        break;
+    }
+
+    return (
+      <div className="flex flex-col lg:flex-row gap-8">
+        <div className="flex-1">{content}</div>
+        <div className="lg:w-[380px] w-full">
+          <div className="lg:sticky lg:top-24 space-y-4">
+            <div className="flex items-center justify-between px-2">
+              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <Info size={14} /> Preview & Copy
+              </h3>
+              <button 
+                onClick={() => copyToClipboard(summary)} 
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-sm transition-all shadow-lg active:scale-95 ${copied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+              >
+                {copied ? <Check size={16} /> : <Copy size={16} />}
+                {copied ? 'Copied' : 'Copy Text'}
+              </button>
+            </div>
+            <div className="bg-[#1a1c1e] text-gray-300 p-8 rounded-[2rem] shadow-2xl font-mono text-sm whitespace-pre-wrap border border-gray-800 min-h-[500px] max-h-[70vh] overflow-y-auto leading-relaxed custom-scrollbar">
+              {summary}
             </div>
           </div>
         </div>
-      );
-    }
-    return null;
+      </div>
+    );
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-20">
+    <div className="min-h-screen bg-[#fcfcfc] font-sans text-gray-900 pb-20">
       <Head>
-        <title>8-7シート (Goal Layer)</title>
+        <title>Goal Layer | 8-7シート</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
-      <header className="bg-white border-b border-gray-200 py-6 px-4 text-center sticky top-0 z-20 shadow-sm">
-        <h1 className="text-xl md:text-2xl font-black tracking-tighter">
-          8-7シート <span className="text-blue-600 font-medium text-sm md:text-base ml-1">Goal Layer</span>
-        </h1>
-      </header>
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex bg-gray-200 p-1 rounded-xl mb-10 overflow-x-auto no-scrollbar shadow-inner">
-          {['1日', '1週間', '1ヵ月', '1年', 'マンダラ'].map((tab) => (
-            <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 min-w-[80px] py-3 text-sm font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white text-blue-600 shadow-md' : 'text-gray-500 hover:text-gray-700'}`}>{tab}</button>
-          ))}
-        </div>
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-10">
-          <div className="mb-8 flex items-center justify-between border-b pb-4">
-            <h2 className="text-2xl font-black text-gray-800 tracking-tight">{activeTab}</h2>
-            <div className="text-[10px] font-black text-gray-300 tracking-[0.3em] uppercase">Goal Management System</div>
+
+      <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 py-5 px-6 sticky top-0 z-30 shadow-sm">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-blue-200 shadow-lg">
+              <Target size={24} />
+            </div>
+            <div>
+              <h1 className="text-lg font-black tracking-tighter leading-none">8-7シート</h1>
+              <p className="text-[10px] font-bold text-blue-600 tracking-widest uppercase">Goal Layer System</p>
+            </div>
           </div>
-          {renderTabContent()}
+          <div className="flex items-center gap-2">
+            <button onClick={resetData} className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Reset All Data">
+              <Trash2 size={20} />
+            </button>
+            <div className="hidden sm:flex items-center gap-1 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-[10px] font-bold text-gray-400 uppercase">Auto-saving</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        <nav className="flex bg-gray-100/50 p-1.5 rounded-[1.5rem] mb-12 overflow-x-auto no-scrollbar shadow-inner border border-gray-100">
+          {['1日', '1週間', '1ヵ月', '1年', 'マンダラ'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 min-w-[90px] py-3.5 text-sm font-bold rounded-2xl transition-all whitespace-nowrap flex items-center justify-center gap-2 ${
+                activeTab === tab
+                  ? 'bg-white text-blue-600 shadow-md scale-[1.02]'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              {tab === '1日' && <Clock size={16} />}
+              {tab === '1週間' && <Calendar size={16} />}
+              {tab === '1ヵ月' && <LayoutDashboard size={16} />}
+              {tab === '1年' && <Target size={16} />}
+              {tab === 'マンダラ' && <Zap size={16} />}
+              {tab}
+            </button>
+          ))}
+        </nav>
+
+        <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-6 md:p-12 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full -mr-32 -mt-32 opacity-50 blur-3xl pointer-events-none"></div>
+          <div className="relative z-10">
+            <div className="mb-12 flex items-end justify-between border-b border-gray-100 pb-6">
+              <div>
+                <h2 className="text-4xl font-black text-gray-900 tracking-tight mb-1">{activeTab}</h2>
+                <p className="text-sm font-medium text-gray-400">Manage your goals with precision and clarity.</p>
+              </div>
+              <div className="hidden sm:block text-[10px] font-black text-gray-200 tracking-[0.5em] uppercase vertical-text">Goal Layer</div>
+            </div>
+            {renderTabContent()}
+          </div>
         </div>
       </main>
-      <footer className="text-center py-10 text-gray-400 text-[10px] font-bold uppercase tracking-widest">&copy; 2026 Goal Layer. Precision Management.</footer>
+
+      <footer className="max-w-7xl mx-auto px-6 py-12 flex flex-col sm:flex-row items-center justify-between gap-6 border-t border-gray-100 mt-12">
+        <div className="flex items-center gap-2 opacity-30 grayscale">
+          <Target size={16} />
+          <span className="text-[10px] font-black uppercase tracking-widest">Goal Layer v2.0</span>
+        </div>
+        <p className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.2em] text-center">
+          &copy; 2026 Goal Layer. Precision Management for High Achievers.
+        </p>
+        <div className="flex gap-4">
+          <div className="w-2 h-2 bg-blue-200 rounded-full"></div>
+          <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+        </div>
+      </footer>
+
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+        
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap');
+        body { 
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+          -webkit-font-smoothing: antialiased;
+        }
+
+        .vertical-text {
+          writing-mode: vertical-rl;
+          transform: rotate(180deg);
+        }
+
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-in {
+          animation: fade-in 0.5s ease-out forwards;
+        }
       `}</style>
     </div>
   );
