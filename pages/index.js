@@ -97,10 +97,10 @@ export default function Home() {
   const [mandalaCenterGoal, setMandalaCenterGoal] = useState('');
   const [mandalaSubGoals, setMandalaSubGoals] = useState(generateInitialMandalaData());
 
-  // --- LocalStorage Persistence (Strictly within useEffect) ---
+  // --- LocalStorage Persistence ---
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedData = localStorage.getItem('goal_layer_v5_storage');
+      const savedData = localStorage.getItem('goal_layer_v6_storage');
       if (savedData) {
         try {
           const p = JSON.parse(savedData);
@@ -158,7 +158,7 @@ export default function Home() {
       year: { val: yearVal, idealState: yearIdealState, goal: yearGoal, teamTarget: yearTeamTarget, teamResult: yearTeamResult, achievement: yearAchievement, goodPoints: yearGoodPoints, improvement: yearImprovement, nextAction: yearNextAction },
       mandala: { date: mandalaDate, centerGoal: mandalaCenterGoal, subGoals: mandalaSubGoals }
     };
-    localStorage.setItem('goal_layer_v5_storage', JSON.stringify(data));
+    localStorage.setItem('goal_layer_v6_storage', JSON.stringify(data));
   }, [
     isLoaded, activeTab, dayDate, dayGoal, daySchedule, dayAchievement, dayGoodThings, dayRedo,
     weekRange, weekGoal, weekDays, weekGoodFlow, weekImprovement, weekNextAction,
@@ -208,6 +208,51 @@ export default function Home() {
       document.body.removeChild(el);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  // --- Reset Handler ---
+  const resetTabContent = () => {
+    if (typeof window !== "undefined" && window.confirm(`${activeTab}タブの入力内容をリセットしますか？`)) {
+      switch (activeTab) {
+        case '1日':
+          setDayDate(getToday());
+          setDayGoal('');
+          setDaySchedule(generateInitialSchedule());
+          setDayAchievement('');
+          setDayGoodThings('');
+          setDayRedo('');
+          break;
+        case '1週間':
+          setWeekRange(getWeekRange());
+          setWeekGoal('');
+          setWeekDays(generateInitialWeeklyDays());
+          setWeekGoodFlow('');
+          setWeekImprovement('');
+          setWeekNextAction('');
+          break;
+        case '1ヵ月':
+          setMonthYear(getThisYear());
+          setMonthAnnualGoal('');
+          setMonthsData(generateInitialMonthsData());
+          break;
+        case '1年':
+          setYearVal(getThisYear());
+          setYearIdealState('');
+          setYearGoal('');
+          setYearTeamTarget('');
+          setYearTeamResult('');
+          setYearAchievement('');
+          setYearGoodPoints('');
+          setYearImprovement('');
+          setYearNextAction('');
+          break;
+        case 'マンダラ':
+          setMandalaDate(getToday());
+          setMandalaCenterGoal('');
+          setMandalaSubGoals(generateInitialMandalaData());
+          break;
+      }
     }
   };
 
@@ -276,7 +321,7 @@ export default function Home() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <input type="text" value={dayAchievement} onChange={(e) => setDayAchievement(e.target.value)} placeholder="達成度 (◎/○/△/×)" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px' }} />
                 <textarea value={dayGoodThings} onChange={(e) => setDayGoodThings(e.target.value)} placeholder="良かったこと" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '80px', resize: 'none' }} />
-                <textarea value={dayRedo} onChange={(e) => setDayRedo(e.target.value)} placeholder="やり直せるなら" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '80px', resize: 'none' }} />
+                <textarea value={dayRedo} onChange={(e) => setDayRedo(e.target.value)} placeholder="今日1日やり直せるなら" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '80px', resize: 'none' }} />
               </div>
             </section>
           </div>
@@ -397,7 +442,7 @@ export default function Home() {
               {mandalaSubGoals.map((sg, sgIdx) => (
                 <div key={sgIdx} style={{ padding: '16px', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', borderBottom: '1px solid #eee', paddingBottom: '8px' }}>
-                    <span style={{ backgroundColor: '#0066ff', color: '#fff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyCenter: 'center', fontSize: '12px' }}>{CIRCLE_NUMBERS[sgIdx]}</span>
+                    <span style={{ backgroundColor: '#0066ff', color: '#fff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>{CIRCLE_NUMBERS[sgIdx]}</span>
                     <input type="text" value={sg.goal} onChange={(e) => handleMandalaSubGoalChange(sgIdx, e.target.value)} placeholder={`中目標 ${sgIdx + 1}`} style={{ flex: 1, border: 'none', fontWeight: 'bold', outline: 'none' }} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -422,12 +467,20 @@ export default function Home() {
         <div style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#666' }}>Preview & Copy</h3>
-            <button 
-              onClick={() => copyToClipboard(summary)} 
-              style={{ padding: '10px 20px', backgroundColor: copied ? '#28a745' : '#0066ff', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-            >
-              {copied ? 'Copied!' : 'Copy Summary'}
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                onClick={resetTabContent} 
+                style={{ padding: '10px 16px', backgroundColor: '#dc3545', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
+              >
+                Reset Tab
+              </button>
+              <button 
+                onClick={() => copyToClipboard(summary)} 
+                style={{ padding: '10px 20px', backgroundColor: copied ? '#28a745' : '#0066ff', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                {copied ? 'Copied!' : 'Copy Summary'}
+              </button>
+            </div>
           </div>
           <div style={{ backgroundColor: '#1a1a1a', color: '#ccc', padding: '24px', borderRadius: '16px', fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'pre-wrap', minHeight: '300px' }}>
             {summary}
