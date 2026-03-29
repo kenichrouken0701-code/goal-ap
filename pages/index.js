@@ -211,7 +211,6 @@ export default function Home() {
     }
   };
 
-  // --- Reset Handler ---
   const resetTabContent = () => {
     if (typeof window !== "undefined" && window.confirm(`${activeTab}タブの入力内容をリセットしますか？`)) {
       switch (activeTab) {
@@ -287,41 +286,45 @@ export default function Home() {
     let summary = "";
     let content = null;
 
+    const sectionStyle = { backgroundColor: '#ffffff', padding: '24px', borderRadius: '16px', border: '1px solid #e5e7eb', marginBottom: '24px' };
+    const inputStyle = { width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: '#ffffff', color: '#111827' };
+    const labelStyle = { display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px', fontWeight: 'bold' };
+
     switch (activeTab) {
       case '1日':
         summary = daySummary();
         content = (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <section style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #eee' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold' }}>基本情報</h3>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <section style={sectionStyle}>
+              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold', color: '#111827' }}>基本情報</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#888', marginBottom: '4px' }}>日付</label>
-                  <input type="text" value={dayDate} onChange={(e) => setDayDate(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px' }} />
+                  <label style={labelStyle}>日付</label>
+                  <input type="text" value={dayDate} onChange={(e) => setDayDate(e.target.value)} style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#888', marginBottom: '4px' }}>1日の目標</label>
-                  <textarea value={dayGoal} onChange={(e) => setDayGoal(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '80px', resize: 'none' }} />
+                  <label style={labelStyle}>1日の目標</label>
+                  <textarea value={dayGoal} onChange={(e) => setDayGoal(e.target.value)} style={{ ...inputStyle, height: '80px', resize: 'none' }} />
                 </div>
               </div>
             </section>
-            <section style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #eee' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold' }}>タイムスケジュール</h3>
+            <section style={sectionStyle}>
+              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold', color: '#111827' }}>タイムスケジュール</h3>
               <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '8px' }}>
                 {daySchedule.map((item, index) => (
-                  <div key={item.time} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 0', borderBottom: '1px solid #f9f9f9' }}>
-                    <span style={{ width: '50px', fontSize: '12px', color: '#aaa' }}>{item.time}</span>
-                    <input type="text" value={item.content} onChange={(e) => handleDayScheduleChange(index, e.target.value)} style={{ flex: 1, padding: '8px', border: 'none', backgroundColor: '#fcfcfc', borderRadius: '4px' }} />
+                  <div key={item.time} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 0', borderBottom: '1px solid #f3f4f6' }}>
+                    <span style={{ width: '50px', fontSize: '12px', color: '#9ca3af', fontWeight: 'bold' }}>{item.time}</span>
+                    <input type="text" value={item.content} onChange={(e) => handleDayScheduleChange(index, e.target.value)} style={{ ...inputStyle, padding: '8px', border: 'none', backgroundColor: '#f9fafb' }} />
                   </div>
                 ))}
               </div>
             </section>
-            <section style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #eee' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold' }}>振り返り</h3>
+            <section style={sectionStyle}>
+              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold', color: '#111827' }}>振り返り</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <input type="text" value={dayAchievement} onChange={(e) => setDayAchievement(e.target.value)} placeholder="達成度 (◎/○/△/×)" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px' }} />
-                <textarea value={dayGoodThings} onChange={(e) => setDayGoodThings(e.target.value)} placeholder="良かったこと" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '80px', resize: 'none' }} />
-                <textarea value={dayRedo} onChange={(e) => setDayRedo(e.target.value)} placeholder="今日1日やり直せるなら" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '80px', resize: 'none' }} />
+                <input type="text" value={dayAchievement} onChange={(e) => setDayAchievement(e.target.value)} placeholder="達成度 (◎/○/△/×)" style={inputStyle} />
+                <textarea value={dayGoodThings} onChange={(e) => setDayGoodThings(e.target.value)} placeholder="良かったこと" style={{ ...inputStyle, height: '80px', resize: 'none' }} />
+                <textarea value={dayRedo} onChange={(e) => setDayRedo(e.target.value)} placeholder="今日1日やり直せるなら" style={{ ...inputStyle, height: '80px', resize: 'none' }} />
               </div>
             </section>
           </div>
@@ -331,34 +334,34 @@ export default function Home() {
       case '1週間':
         summary = weekSummary();
         content = (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <section style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #eee' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold' }}>週間設定</h3>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <section style={sectionStyle}>
+              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold', color: '#111827' }}>週間設定</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-                <input type="text" value={weekRange} onChange={(e) => setWeekRange(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px' }} />
-                <textarea value={weekGoal} onChange={(e) => setWeekGoal(e.target.value)} placeholder="今週の目標" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '80px', resize: 'none' }} />
+                <input type="text" value={weekRange} onChange={(e) => setWeekRange(e.target.value)} style={inputStyle} />
+                <textarea value={weekGoal} onChange={(e) => setWeekGoal(e.target.value)} placeholder="今週の目標" style={{ ...inputStyle, height: '80px', resize: 'none' }} />
               </div>
             </section>
-            <section style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #eee', overflowX: 'auto' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold' }}>デイリーログ</h3>
+            <section style={{ ...sectionStyle, overflowX: 'auto' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold', color: '#111827' }}>デイリーログ</h3>
               <div style={{ display: 'flex', gap: '12px', minWidth: '800px' }}>
                 {weekDays.map((d, idx) => (
-                  <div key={d.day} style={{ flex: 1, padding: '12px', backgroundColor: '#f9f9f9', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ textAlign: 'center', fontWeight: 'bold', borderBottom: '1px solid #ddd', paddingBottom: '4px' }}>{d.day}</div>
-                    <input type="text" value={d.goal} onChange={(e) => handleWeekDayChange(idx, 'goal', e.target.value)} placeholder="目標" style={{ fontSize: '11px', padding: '6px', border: '1px solid #eee' }} />
-                    <input type="text" value={d.task} onChange={(e) => handleWeekDayChange(idx, 'task', e.target.value)} placeholder="タスク" style={{ fontSize: '11px', padding: '6px', border: '1px solid #eee' }} />
-                    <input type="text" value={d.rating} onChange={(e) => handleWeekDayChange(idx, 'rating', e.target.value)} placeholder="達成度" style={{ fontSize: '11px', padding: '6px', border: '1px solid #eee' }} />
-                    <textarea value={d.memo} onChange={(e) => handleWeekDayChange(idx, 'memo', e.target.value)} placeholder="メモ" style={{ fontSize: '11px', padding: '6px', border: '1px solid #eee', height: '60px' }} />
+                  <div key={d.day} style={{ flex: 1, padding: '12px', backgroundColor: '#f9fafb', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid #e5e7eb' }}>
+                    <div style={{ textAlign: 'center', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb', paddingBottom: '4px', color: '#111827' }}>{d.day}</div>
+                    <input type="text" value={d.goal} onChange={(e) => handleWeekDayChange(idx, 'goal', e.target.value)} placeholder="目標" style={{ ...inputStyle, fontSize: '11px', padding: '6px' }} />
+                    <input type="text" value={d.task} onChange={(e) => handleWeekDayChange(idx, 'task', e.target.value)} placeholder="タスク" style={{ ...inputStyle, fontSize: '11px', padding: '6px' }} />
+                    <input type="text" value={d.rating} onChange={(e) => handleWeekDayChange(idx, 'rating', e.target.value)} placeholder="達成度" style={{ ...inputStyle, fontSize: '11px', padding: '6px' }} />
+                    <textarea value={d.memo} onChange={(e) => handleWeekDayChange(idx, 'memo', e.target.value)} placeholder="メモ" style={{ ...inputStyle, fontSize: '11px', padding: '6px', height: '60px' }} />
                   </div>
                 ))}
               </div>
             </section>
-            <section style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #eee' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold' }}>振り返り</h3>
+            <section style={sectionStyle}>
+              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold', color: '#111827' }}>振り返り</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
-                <textarea value={weekGoodFlow} onChange={(e) => setWeekGoodFlow(e.target.value)} placeholder="良かった流れ" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '80px' }} />
-                <textarea value={weekImprovement} onChange={(e) => setWeekImprovement(e.target.value)} placeholder="改善ポイント" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '80px' }} />
-                <textarea value={weekNextAction} onChange={(e) => setWeekNextAction(e.target.value)} placeholder="来週のアクション" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '80px' }} />
+                <textarea value={weekGoodFlow} onChange={(e) => setWeekGoodFlow(e.target.value)} placeholder="良かった流れ" style={{ ...inputStyle, height: '80px' }} />
+                <textarea value={weekImprovement} onChange={(e) => setWeekImprovement(e.target.value)} placeholder="改善ポイント" style={{ ...inputStyle, height: '80px' }} />
+                <textarea value={weekNextAction} onChange={(e) => setWeekNextAction(e.target.value)} placeholder="来週のアクション" style={{ ...inputStyle, height: '80px' }} />
               </div>
             </section>
           </div>
@@ -368,28 +371,28 @@ export default function Home() {
       case '1ヵ月':
         summary = monthSummary();
         content = (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <section style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #eee' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold' }}>年間概況</h3>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <section style={sectionStyle}>
+              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold', color: '#111827' }}>年間概況</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-                <input type="text" value={monthYear} onChange={(e) => setMonthYear(e.target.value)} placeholder="年" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px' }} />
-                <textarea value={monthAnnualGoal} onChange={(e) => setMonthAnnualGoal(e.target.value)} placeholder="年間目標" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '80px' }} />
+                <input type="text" value={monthYear} onChange={(e) => setMonthYear(e.target.value)} placeholder="年" style={inputStyle} />
+                <textarea value={monthAnnualGoal} onChange={(e) => setMonthAnnualGoal(e.target.value)} placeholder="年間目標" style={{ ...inputStyle, height: '80px' }} />
               </div>
             </section>
-            <section style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #eee' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold' }}>月別ログ</h3>
+            <section style={sectionStyle}>
+              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold', color: '#111827' }}>月別ログ</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px' }}>
                 {monthsData.map((m, idx) => (
-                  <div key={m.month} style={{ padding: '12px', backgroundColor: '#f9f9f9', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ textAlign: 'center', fontWeight: 'bold' }}>{m.month}</div>
-                    <input type="text" value={m.goal} onChange={(e) => handleMonthDataChange(idx, 'goal', e.target.value)} placeholder="目標" style={{ fontSize: '10px', padding: '4px' }} />
+                  <div key={m.month} style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '6px', border: '1px solid #e5e7eb' }}>
+                    <div style={{ textAlign: 'center', fontWeight: 'bold', color: '#111827' }}>{m.month}</div>
+                    <input type="text" value={m.goal} onChange={(e) => handleMonthDataChange(idx, 'goal', e.target.value)} placeholder="目標" style={{ ...inputStyle, fontSize: '10px', padding: '4px' }} />
                     <div style={{ display: 'flex', gap: '4px' }}>
-                      <input type="text" value={m.teamTarget} onChange={(e) => handleMonthDataChange(idx, 'teamTarget', e.target.value)} placeholder="目" style={{ fontSize: '10px', padding: '4px', width: '50%' }} />
-                      <input type="text" value={m.teamResult} onChange={(e) => handleMonthDataChange(idx, 'teamResult', e.target.value)} placeholder="結" style={{ fontSize: '10px', padding: '4px', width: '50%' }} />
+                      <input type="text" value={m.teamTarget} onChange={(e) => handleMonthDataChange(idx, 'teamTarget', e.target.value)} placeholder="目" style={{ ...inputStyle, fontSize: '10px', padding: '4px', width: '50%' }} />
+                      <input type="text" value={m.teamResult} onChange={(e) => handleMonthDataChange(idx, 'teamResult', e.target.value)} placeholder="結" style={{ ...inputStyle, fontSize: '10px', padding: '4px', width: '50%' }} />
                     </div>
-                    <input type="text" value={m.theme} onChange={(e) => handleMonthDataChange(idx, 'theme', e.target.value)} placeholder="テーマ" style={{ fontSize: '10px', padding: '4px' }} />
-                    <input type="text" value={m.rating} onChange={(e) => handleMonthDataChange(idx, 'rating', e.target.value)} placeholder="達成度" style={{ fontSize: '10px', padding: '4px' }} />
-                    <textarea value={m.reflection} onChange={(e) => handleMonthDataChange(idx, 'reflection', e.target.value)} placeholder="振り返り" style={{ fontSize: '10px', padding: '4px', height: '40px' }} />
+                    <input type="text" value={m.theme} onChange={(e) => handleMonthDataChange(idx, 'theme', e.target.value)} placeholder="テーマ" style={{ ...inputStyle, fontSize: '10px', padding: '4px' }} />
+                    <input type="text" value={m.rating} onChange={(e) => handleMonthDataChange(idx, 'rating', e.target.value)} placeholder="達成度" style={{ ...inputStyle, fontSize: '10px', padding: '4px' }} />
+                    <textarea value={m.reflection} onChange={(e) => handleMonthDataChange(idx, 'reflection', e.target.value)} placeholder="振り返り" style={{ ...inputStyle, fontSize: '10px', padding: '4px', height: '40px' }} />
                   </div>
                 ))}
               </div>
@@ -401,26 +404,26 @@ export default function Home() {
       case '1年':
         summary = yearSummary();
         content = (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <section style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #eee' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold' }}>年間ビジョン</h3>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <section style={sectionStyle}>
+              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold', color: '#111827' }}>年間ビジョン</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-                <input type="text" value={yearVal} onChange={(e) => setYearVal(e.target.value)} placeholder="年" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px' }} />
-                <textarea value={yearIdealState} onChange={(e) => setYearIdealState(e.target.value)} placeholder="どういう状態になりたいか" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '80px' }} />
-                <textarea value={yearGoal} onChange={(e) => setYearGoal(e.target.value)} placeholder="年間目標" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '80px' }} />
+                <input type="text" value={yearVal} onChange={(e) => setYearVal(e.target.value)} placeholder="年" style={inputStyle} />
+                <textarea value={yearIdealState} onChange={(e) => setYearIdealState(e.target.value)} placeholder="どういう状態になりたいか" style={{ ...inputStyle, height: '80px' }} />
+                <textarea value={yearGoal} onChange={(e) => setYearGoal(e.target.value)} placeholder="年間目標" style={{ ...inputStyle, height: '80px' }} />
                 <div style={{ display: 'flex', gap: '12px' }}>
-                  <input type="text" value={yearTeamTarget} onChange={(e) => setYearTeamTarget(e.target.value)} placeholder="チーム人数(目標)" style={{ flex: 1, padding: '12px', border: '1px solid #ddd', borderRadius: '8px' }} />
-                  <input type="text" value={yearTeamResult} onChange={(e) => setYearTeamResult(e.target.value)} placeholder="チーム人数(結果)" style={{ flex: 1, padding: '12px', border: '1px solid #ddd', borderRadius: '8px' }} />
+                  <input type="text" value={yearTeamTarget} onChange={(e) => setYearTeamTarget(e.target.value)} placeholder="チーム人数(目標)" style={{ ...inputStyle, flex: 1 }} />
+                  <input type="text" value={yearTeamResult} onChange={(e) => setYearTeamResult(e.target.value)} placeholder="チーム人数(結果)" style={{ ...inputStyle, flex: 1 }} />
                 </div>
               </div>
             </section>
-            <section style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #eee' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold' }}>年間総括</h3>
+            <section style={sectionStyle}>
+              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold', color: '#111827' }}>年間総括</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
-                <input type="text" value={yearAchievement} onChange={(e) => setYearAchievement(e.target.value)} placeholder="達成度" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px' }} />
-                <textarea value={yearGoodPoints} onChange={(e) => setYearGoodPoints(e.target.value)} placeholder="良かった点" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '80px' }} />
-                <textarea value={yearImprovement} onChange={(e) => setYearImprovement(e.target.value)} placeholder="改善点" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '80px' }} />
-                <textarea value={yearNextAction} onChange={(e) => setYearNextAction(e.target.value)} placeholder="来年のアクション" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '80px' }} />
+                <input type="text" value={yearAchievement} onChange={(e) => setYearAchievement(e.target.value)} placeholder="達成度" style={inputStyle} />
+                <textarea value={yearGoodPoints} onChange={(e) => setYearGoodPoints(e.target.value)} placeholder="良かった点" style={{ ...inputStyle, height: '80px' }} />
+                <textarea value={yearImprovement} onChange={(e) => setYearImprovement(e.target.value)} placeholder="改善点" style={{ ...inputStyle, height: '80px' }} />
+                <textarea value={yearNextAction} onChange={(e) => setYearNextAction(e.target.value)} placeholder="来年のアクション" style={{ ...inputStyle, height: '80px' }} />
               </div>
             </section>
           </div>
@@ -430,26 +433,26 @@ export default function Home() {
       case 'マンダラ':
         summary = mandalaSummary();
         content = (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <section style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #eee' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold' }}>マンダラチャート設定</h3>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <section style={sectionStyle}>
+              <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold', color: '#111827' }}>マンダラチャート設定</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <input type="text" value={mandalaDate} onChange={(e) => setMandalaDate(e.target.value)} placeholder="作成日" style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '8px' }} />
-                <input type="text" value={mandalaCenterGoal} onChange={(e) => setMandalaCenterGoal(e.target.value)} placeholder="最終目標 (中央)" style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#f0f7ff', fontWeight: 'bold' }} />
+                <input type="text" value={mandalaDate} onChange={(e) => setMandalaDate(e.target.value)} placeholder="作成日" style={inputStyle} />
+                <input type="text" value={mandalaCenterGoal} onChange={(e) => setMandalaCenterGoal(e.target.value)} placeholder="最終目標 (中央)" style={{ ...inputStyle, backgroundColor: '#f0f7ff', fontWeight: 'bold' }} />
               </div>
             </section>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
               {mandalaSubGoals.map((sg, sgIdx) => (
-                <div key={sgIdx} style={{ padding: '16px', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', borderBottom: '1px solid #eee', paddingBottom: '8px' }}>
-                    <span style={{ backgroundColor: '#0066ff', color: '#fff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>{CIRCLE_NUMBERS[sgIdx]}</span>
-                    <input type="text" value={sg.goal} onChange={(e) => handleMandalaSubGoalChange(sgIdx, e.target.value)} placeholder={`中目標 ${sgIdx + 1}`} style={{ flex: 1, border: 'none', fontWeight: 'bold', outline: 'none' }} />
+                <div key={sgIdx} style={{ padding: '16px', backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>
+                    <span style={{ backgroundColor: '#0066ff', color: '#ffffff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>{CIRCLE_NUMBERS[sgIdx]}</span>
+                    <input type="text" value={sg.goal} onChange={(e) => handleMandalaSubGoalChange(sgIdx, e.target.value)} placeholder={`中目標 ${sgIdx + 1}`} style={{ flex: 1, border: 'none', fontWeight: 'bold', outline: 'none', color: '#111827' }} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     {sg.actions.map((action, aIdx) => (
                       <div key={aIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '10px', color: '#ccc' }}>{aIdx + 1}</span>
-                        <input type="text" value={action} onChange={(e) => handleMandalaActionChange(sgIdx, aIdx, e.target.value)} placeholder="アクション" style={{ flex: 1, padding: '4px', fontSize: '12px', border: '1px solid #f0f0f0', borderRadius: '4px' }} />
+                        <span style={{ fontSize: '10px', color: '#9ca3af' }}>{aIdx + 1}</span>
+                        <input type="text" value={action} onChange={(e) => handleMandalaActionChange(sgIdx, aIdx, e.target.value)} placeholder="アクション" style={{ ...inputStyle, flex: 1, padding: '4px', fontSize: '12px', border: '1px solid #f3f4f6' }} />
                       </div>
                     ))}
                   </div>
@@ -464,25 +467,25 @@ export default function Home() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
         <div style={{ flex: 1 }}>{content}</div>
-        <div style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}>
+        <div style={{ width: '100%', maxWidth: '600px', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#666' }}>Preview & Copy</h3>
+            <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#4b5563' }}>Preview & Copy</h3>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button 
                 onClick={resetTabContent} 
-                style={{ padding: '10px 16px', backgroundColor: '#dc3545', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
+                style={{ padding: '10px 16px', backgroundColor: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
               >
                 Reset Tab
               </button>
               <button 
                 onClick={() => copyToClipboard(summary)} 
-                style={{ padding: '10px 20px', backgroundColor: copied ? '#28a745' : '#0066ff', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                style={{ padding: '10px 20px', backgroundColor: copied ? '#10b981' : '#0066ff', color: '#ffffff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
               >
                 {copied ? 'Copied!' : 'Copy Summary'}
               </button>
             </div>
           </div>
-          <div style={{ backgroundColor: '#1a1a1a', color: '#ccc', padding: '24px', borderRadius: '16px', fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'pre-wrap', minHeight: '300px' }}>
+          <div style={{ backgroundColor: '#ffffff', color: '#111827', padding: '24px', borderRadius: '16px', border: '1px solid #e5e7eb', fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'pre-wrap', minHeight: '300px' }}>
             {summary}
           </div>
         </div>
@@ -491,18 +494,18 @@ export default function Home() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa', color: '#333', paddingBottom: '64px', fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', color: '#111827', paddingBottom: '64px', fontFamily: 'sans-serif' }}>
       <Head>
         <title>Goal Layer | 8-7シート</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <header style={{ backgroundColor: '#fff', borderBottom: '1px solid #eee', padding: '20px', textAlign: 'center', position: 'sticky', top: 0, zIndex: 100 }}>
-        <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '900', letterSpacing: '-0.5px' }}>8-7シート <span style={{ color: '#0066ff', fontSize: '12px', fontWeight: 'bold' }}>Goal Layer</span></h1>
+      <header style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb', padding: '20px', textAlign: 'center', position: 'sticky', top: 0, zIndex: 100 }}>
+        <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '900', letterSpacing: '-0.5px', color: '#111827' }}>8-7シート <span style={{ color: '#0066ff', fontSize: '12px', fontWeight: 'bold' }}>Goal Layer</span></h1>
       </header>
 
       <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '20px' }}>
-        <nav style={{ display: 'flex', backgroundColor: '#eee', padding: '4px', borderRadius: '12px', marginBottom: '32px', overflowX: 'auto' }}>
+        <nav style={{ display: 'flex', backgroundColor: '#f3f4f6', padding: '4px', borderRadius: '12px', marginBottom: '32px', overflowX: 'auto', border: '1px solid #e5e7eb' }}>
           {['1日', '1週間', '1ヵ月', '1年', 'マンダラ'].map((tab) => (
             <button
               key={tab}
@@ -513,11 +516,12 @@ export default function Home() {
                 padding: '12px',
                 border: 'none',
                 borderRadius: '8px',
-                backgroundColor: activeTab === tab ? '#fff' : 'transparent',
-                color: activeTab === tab ? '#0066ff' : '#666',
+                backgroundColor: activeTab === tab ? '#ffffff' : 'transparent',
+                color: activeTab === tab ? '#0066ff' : '#6b7280',
                 fontWeight: 'bold',
                 cursor: 'pointer',
-                transition: '0.2s'
+                transition: '0.2s',
+                boxShadow: activeTab === tab ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
               }}
             >
               {tab}
@@ -525,21 +529,22 @@ export default function Home() {
           ))}
         </nav>
 
-        <div style={{ backgroundColor: '#fff', borderRadius: '24px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-          <h2 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '24px', borderBottom: '2px solid #f0f0f0', paddingBottom: '12px' }}>{activeTab}</h2>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '24px', padding: '24px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '24px', borderBottom: '2px solid #f3f4f6', paddingBottom: '12px', color: '#111827' }}>{activeTab}</h2>
           {renderTabContent()}
         </div>
       </main>
 
-      <footer style={{ textAlign: 'center', padding: '40px', color: '#ccc', fontSize: '12px' }}>
+      <footer style={{ textAlign: 'center', padding: '40px', color: '#9ca3af', fontSize: '12px' }}>
         &copy; 2026 Goal Layer. All rights reserved.
       </footer>
 
       <style jsx global>{`
-        body { margin: 0; }
+        body { margin: 0; background-color: #f9fafb; }
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+        input:focus, textarea:focus { outline: 2px solid #0066ff; outline-offset: -1px; }
       `}</style>
     </div>
   );
