@@ -96,11 +96,12 @@ export default function Home() {
   const [mandalaDate, setMandalaDate] = useState(getToday());
   const [mandalaCenterGoal, setMandalaCenterGoal] = useState('');
   const [mandalaSubGoals, setMandalaSubGoals] = useState(generateInitialMandalaData());
+  const [selectedSubGoalIdx, setSelectedSubGoalIdx] = useState(null);
 
   // --- LocalStorage Persistence ---
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedData = localStorage.getItem('goal_layer_v6_storage');
+      const savedData = localStorage.getItem('goal_layer_v7_storage');
       if (savedData) {
         try {
           const p = JSON.parse(savedData);
@@ -158,7 +159,7 @@ export default function Home() {
       year: { val: yearVal, idealState: yearIdealState, goal: yearGoal, teamTarget: yearTeamTarget, teamResult: yearTeamResult, achievement: yearAchievement, goodPoints: yearGoodPoints, improvement: yearImprovement, nextAction: yearNextAction },
       mandala: { date: mandalaDate, centerGoal: mandalaCenterGoal, subGoals: mandalaSubGoals }
     };
-    localStorage.setItem('goal_layer_v6_storage', JSON.stringify(data));
+    localStorage.setItem('goal_layer_v7_storage', JSON.stringify(data));
   }, [
     isLoaded, activeTab, dayDate, dayGoal, daySchedule, dayAchievement, dayGoodThings, dayRedo,
     weekRange, weekGoal, weekDays, weekGoodFlow, weekImprovement, weekNextAction,
@@ -250,6 +251,7 @@ export default function Home() {
           setMandalaDate(getToday());
           setMandalaCenterGoal('');
           setMandalaSubGoals(generateInitialMandalaData());
+          setSelectedSubGoalIdx(null);
           break;
       }
     }
@@ -277,8 +279,8 @@ export default function Home() {
 
   const mandalaSummary = () => {
     const strategyText = mandalaSubGoals.map((sg, i) => `${CIRCLE_NUMBERS[i]} ${sg.goal}`).join('\n');
-    const actionPlanText = mandalaSubGoals.map((sg, i) => `【${CIRCLE_NUMBERS[i]}】\n${sg.actions.filter(a => a.trim() !== '').map(a => `・${a}`).join('\n') || '（未入力）'}`).join('\n\n');
-    return `■作成日\n${mandalaDate}\n\n■最終目標\n${mandalaCenterGoal}\n\n■戦略（中目標）\n\n${strategyText}\n\n■行動プラン\n\n${actionPlanText}`;
+    const actionPlanText = mandalaSubGoals.map((sg, i) => `【${CIRCLE_NUMBERS[i]} ${sg.goal}】\n${sg.actions.filter(a => a.trim() !== '').map(a => `・${a}`).join('\n') || '（未入力）'}`).join('\n\n');
+    return `■作成日\n${mandalaDate}\n\n■最終目標\n${mandalaCenterGoal}\n\n■中目標\n${strategyText}\n\n■行動プラン\n\n${actionPlanText}`;
   };
 
   // --- Render Helpers ---
@@ -432,33 +434,121 @@ export default function Home() {
 
       case 'マンダラ':
         summary = mandalaSummary();
+        const gridMapping = [0, 1, 2, 7, 'center', 3, 6, 5, 4];
         content = (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <section style={sectionStyle}>
               <h3 style={{ margin: '0 0 16px 0', fontWeight: 'bold', color: '#111827' }}>マンダラチャート設定</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <input type="text" value={mandalaDate} onChange={(e) => setMandalaDate(e.target.value)} placeholder="作成日" style={inputStyle} />
-                <input type="text" value={mandalaCenterGoal} onChange={(e) => setMandalaCenterGoal(e.target.value)} placeholder="最終目標 (中央)" style={{ ...inputStyle, backgroundColor: '#f0f7ff', fontWeight: 'bold' }} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+                <div>
+                  <label style={labelStyle}>作成日</label>
+                  <input type="text" value={mandalaDate} onChange={(e) => setMandalaDate(e.target.value)} style={inputStyle} />
+                </div>
               </div>
             </section>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-              {mandalaSubGoals.map((sg, sgIdx) => (
-                <div key={sgIdx} style={{ padding: '16px', backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>
-                    <span style={{ backgroundColor: '#0066ff', color: '#ffffff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>{CIRCLE_NUMBERS[sgIdx]}</span>
-                    <input type="text" value={sg.goal} onChange={(e) => handleMandalaSubGoalChange(sgIdx, e.target.value)} placeholder={`中目標 ${sgIdx + 1}`} style={{ flex: 1, border: 'none', fontWeight: 'bold', outline: 'none', color: '#111827' }} />
+
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(3, 1fr)', 
+              gap: '8px', 
+              aspectRatio: '1/1', 
+              maxWidth: '600px', 
+              margin: '0 auto 32px auto',
+              width: '100%'
+            }}>
+              {gridMapping.map((item, i) => {
+                if (item === 'center') {
+                  return (
+                    <div key="center" style={{ 
+                      backgroundColor: '#f0f7ff', 
+                      border: '2px solid #0066ff', 
+                      borderRadius: '8px', 
+                      padding: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center'
+                    }}>
+                      <label style={{ ...labelStyle, color: '#0066ff', textAlign: 'center', fontSize: '10px' }}>最終目標</label>
+                      <textarea 
+                        value={mandalaCenterGoal} 
+                        onChange={(e) => setMandalaCenterGoal(e.target.value)} 
+                        style={{ 
+                          width: '100%', 
+                          height: '100%', 
+                          border: 'none', 
+                          backgroundColor: 'transparent', 
+                          textAlign: 'center', 
+                          fontWeight: 'bold', 
+                          fontSize: '14px',
+                          resize: 'none',
+                          outline: 'none'
+                        }} 
+                      />
+                    </div>
+                  );
+                }
+                const sg = mandalaSubGoals[item];
+                const isSelected = selectedSubGoalIdx === item;
+                return (
+                  <div 
+                    key={item} 
+                    onClick={() => setSelectedSubGoalIdx(item)}
+                    style={{ 
+                      backgroundColor: isSelected ? '#eef2ff' : '#ffffff', 
+                      border: isSelected ? '2px solid #6366f1' : '1px solid #e5e7eb', 
+                      borderRadius: '8px', 
+                      padding: '8px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      transition: '0.2s'
+                    }}
+                  >
+                    <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 'bold' }}>{CIRCLE_NUMBERS[item]}</div>
+                    <textarea 
+                      value={sg.goal} 
+                      onChange={(e) => handleMandalaSubGoalChange(item, e.target.value)}
+                      placeholder="中目標"
+                      style={{ 
+                        width: '100%', 
+                        flex: 1, 
+                        border: 'none', 
+                        backgroundColor: 'transparent', 
+                        fontSize: '12px',
+                        resize: 'none',
+                        outline: 'none',
+                        textAlign: 'center'
+                      }} 
+                    />
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {sg.actions.map((action, aIdx) => (
-                      <div key={aIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '10px', color: '#9ca3af' }}>{aIdx + 1}</span>
-                        <input type="text" value={action} onChange={(e) => handleMandalaActionChange(sgIdx, aIdx, e.target.value)} placeholder="アクション" style={{ ...inputStyle, flex: 1, padding: '4px', fontSize: '12px', border: '1px solid #f3f4f6' }} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
+
+            {selectedSubGoalIdx !== null && (
+              <section style={{ ...sectionStyle, border: '2px solid #6366f1', animation: 'fadeIn 0.3s ease' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h3 style={{ margin: 0, fontWeight: 'bold', color: '#111827' }}>
+                    {CIRCLE_NUMBERS[selectedSubGoalIdx]} {mandalaSubGoals[selectedSubGoalIdx].goal || '（中目標未入力）'} のアクション
+                  </h3>
+                  <button onClick={() => setSelectedSubGoalIdx(null)} style={{ border: 'none', background: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '12px' }}>閉じる ✕</button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+                  {mandalaSubGoals[selectedSubGoalIdx].actions.map((action, aIdx) => (
+                    <div key={aIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 'bold', width: '20px' }}>{aIdx + 1}</span>
+                      <input 
+                        type="text" 
+                        value={action} 
+                        onChange={(e) => handleMandalaActionChange(selectedSubGoalIdx, aIdx, e.target.value)} 
+                        placeholder="アクション" 
+                        style={inputStyle} 
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         );
         break;
@@ -535,14 +625,18 @@ export default function Home() {
         </div>
       </main>
 
-    <footer style={{ textAlign: 'center', padding: '40px', color: '#9ca3af', fontSize: '12px' }}>
-  &copy; 2026 Goal Layer. All rights reserved.
-</footer>
+      <footer style={{ textAlign: 'center', padding: '40px', color: '#9ca3af', fontSize: '12px' }}>
+        &copy; 2026 Goal Layer. All rights reserved.
+      </footer>
 
-<style jsx global>{`
-  body { margin: 0; background-color: #f9fafb; }
-  * { box-sizing: border-box; }
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
-  input:focus, textarea:focus { outline: 2px solid #0066ff; outline-offset: -1px; }
-`}</style>
+      <style jsx global>{`
+        body { margin: 0; background-color: #f9fafb; }
+        * { box-sizing: border-box; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+        input:focus, textarea:focus { outline: 2px solid #0066ff; outline-offset: -1px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
+    </div>
+  );
+}
