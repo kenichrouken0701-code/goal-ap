@@ -535,17 +535,14 @@ export default function Home() {
         </div>
       </main>
 
-      <footer style={{ textAlign: 'center', padding: '40px', color: '#9ca3af', fontSize: '12px' }}>
-        &copy; 2026 Goal Layer. All rights reserved.
-      </footer>
+    <footer style={{ textAlign: 'center', padding: '40px', color: '#9ca3af', fontSize: '12px' }}>
+  &copy; 2026 Goal Layer. All rights reserved.
+</footer>
 
-      <style jsx global>{`
-        body { margin: 0; background-color: #f9fafb; }
-        * { box-sizing: border-box; }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
-        input:focus, textarea:focus { outline: 2px solid #0066ff; outline-offset: -1px; }
-      `}</style>
-    </div>
-  );
-}
+<style jsx global>{`
+  body { margin: 0; background-color: #f9fafb; }
+  * { box-sizing: border-box; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+  input:focus, textarea:focus { outline: 2px solid #0066ff; outline-offset: -1px; }
+`}</style>
