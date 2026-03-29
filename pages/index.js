@@ -24,14 +24,15 @@ const getToday = () => {
 
 const getWeekRange = () => {
   const now = new Date();
-  const day = now.getDay(); // 0 (Sun) to 6 (Sat)
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(now.setDate(diff));
   const sunday = new Date(now.setDate(diff + 6));
-  
   const format = (d) => `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
   return `${format(monday)}～${format(sunday)}`;
 };
+
+const getThisYear = () => new Date().getFullYear().toString();
 
 export default function Home() {
   // --- Global State ---
@@ -53,6 +54,17 @@ export default function Home() {
   const [weekGoodFlow, setWeekGoodFlow] = useState('');
   const [weekImprovement, setWeekImprovement] = useState('');
   const [weekNextAction, setWeekNextAction] = useState('');
+
+  // --- 1年 (Yearly) State ---
+  const [yearVal, setYearVal] = useState(getThisYear());
+  const [yearIdealState, setYearIdealState] = useState('');
+  const [yearGoal, setYearGoal] = useState('');
+  const [yearTeamTarget, setYearTeamTarget] = useState('');
+  const [yearTeamResult, setYearTeamResult] = useState('');
+  const [yearAchievement, setYearAchievement] = useState('');
+  const [yearGoodPoints, setYearGoodPoints] = useState('');
+  const [yearImprovement, setYearImprovement] = useState('');
+  const [yearNextAction, setYearNextAction] = useState('');
 
   // --- Handlers ---
   const handleDayScheduleChange = (index, value) => {
@@ -86,6 +98,10 @@ export default function Home() {
   const weekSummary = () => {
     const ratingsText = weekDays.map(d => `${d.day}：${d.rating}`).join('\n');
     return `■期間\n${weekRange}\n\n■今週の目標\n${weekGoal}\n\n■週間サマリー\n\n【達成状況】\n${ratingsText}\n\n【良かった流れ】\n${weekGoodFlow}\n\n【改善ポイント】\n${weekImprovement}\n\n【来週のアクション】\n${weekNextAction}`;
+  };
+
+  const yearSummary = () => {
+    return `■年\n${yearVal}\n\n■なりたい状態\n${yearIdealState}\n\n■年間目標\n${yearGoal}\n\n■チーム人数\n目標：${yearTeamTarget}\n結果：${yearTeamResult}\n\n■総括\n\n【達成度】\n${yearAchievement}\n\n【良かった点】\n${yearGoodPoints}\n\n【改善点】\n${yearImprovement}\n\n【来年のアクション】\n${yearNextAction}`;
   };
 
   // --- Render Helpers ---
@@ -207,6 +223,72 @@ export default function Home() {
                 <button onClick={() => copyToClipboard(weekSummary())} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${copied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg'}`}>{copied ? 'Copied!' : 'Copy Summary'}</button>
               </div>
               <div className="bg-gray-900 text-gray-100 p-6 rounded-2xl shadow-xl font-mono text-sm whitespace-pre-wrap border border-gray-700 min-h-[500px] leading-relaxed">{weekSummary()}</div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeTab === '1年') {
+      return (
+        <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex-1 space-y-8">
+            <section className="space-y-4">
+              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">年間設定</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">年</label>
+                  <input type="text" value={yearVal} onChange={(e) => setYearVal(e.target.value)} placeholder="YYYY" className="w-full p-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">どういう状態になりたいか</label>
+                  <textarea value={yearIdealState} onChange={(e) => setYearIdealState(e.target.value)} placeholder="1年後の理想像を記述" className="w-full p-3 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">年間目標</label>
+                  <textarea value={yearGoal} onChange={(e) => setYearGoal(e.target.value)} placeholder="具体的に達成したい数値や状態" className="w-full p-3 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">チーム人数 (目標)</label>
+                    <input type="text" value={yearTeamTarget} onChange={(e) => setYearTeamTarget(e.target.value)} className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">チーム人数 (結果)</label>
+                    <input type="text" value={yearTeamResult} onChange={(e) => setYearTeamResult(e.target.value)} className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
+                  </div>
+                </div>
+              </div>
+            </section>
+            <section className="space-y-4">
+              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">年間総括</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">達成度</label>
+                  <input type="text" value={yearAchievement} onChange={(e) => setYearAchievement(e.target.value)} placeholder="◎ / ○ / △ / ×" className="w-full p-2 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">良かった点</label>
+                  <textarea value={yearGoodPoints} onChange={(e) => setYearGoodPoints(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">改善点</label>
+                  <textarea value={yearImprovement} onChange={(e) => setYearImprovement(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">来年のアクション</label>
+                  <textarea value={yearNextAction} onChange={(e) => setYearNextAction(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none" />
+                </div>
+              </div>
+            </section>
+          </div>
+          <div className="lg:w-[400px] w-full">
+            <div className="sticky top-24 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Yearly Preview</h3>
+                <button onClick={() => copyToClipboard(yearSummary())} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${copied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg'}`}>{copied ? 'Copied!' : 'Copy Summary'}</button>
+              </div>
+              <div className="bg-gray-900 text-gray-100 p-6 rounded-2xl shadow-xl font-mono text-sm whitespace-pre-wrap border border-gray-700 min-h-[500px] leading-relaxed">{yearSummary()}</div>
             </div>
           </div>
         </div>
