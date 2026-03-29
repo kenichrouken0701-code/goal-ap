@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 
-// --- Helpers ---
+// --- Helpers & Constants ---
 const generateInitialSchedule = () => {
   const hours = [];
   for (let i = 7; i <= 23; i++) hours.push(`${i}:00`);
@@ -61,6 +61,7 @@ export default function Home() {
   // --- Global State ---
   const [activeTab, setActiveTab] = useState('1日');
   const [copied, setCopied] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // --- 1日 (Daily) State ---
   const [dayDate, setDayDate] = useState(getToday());
@@ -99,6 +100,74 @@ export default function Home() {
   const [mandalaCenterGoal, setMandalaCenterGoal] = useState('');
   const [mandalaSubGoals, setMandalaSubGoals] = useState(generateInitialMandalaData());
 
+  // --- LocalStorage Persistence ---
+  useEffect(() => {
+    const savedData = localStorage.getItem('goal_layer_data');
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        if (parsed.day) {
+          setDayDate(parsed.day.date || getToday());
+          setDayGoal(parsed.day.goal || '');
+          setDaySchedule(parsed.day.schedule || generateInitialSchedule());
+          setDayAchievement(parsed.day.achievement || '');
+          setDayGoodThings(parsed.day.goodThings || '');
+          setDayRedo(parsed.day.redo || '');
+        }
+        if (parsed.week) {
+          setWeekRange(parsed.week.range || getWeekRange());
+          setWeekGoal(parsed.week.goal || '');
+          setWeekDays(parsed.week.days || generateInitialWeeklyDays());
+          setWeekGoodFlow(parsed.week.goodFlow || '');
+          setWeekImprovement(parsed.week.improvement || '');
+          setWeekNextAction(parsed.week.nextAction || '');
+        }
+        if (parsed.month) {
+          setMonthYear(parsed.month.year || getThisYear());
+          setMonthAnnualGoal(parsed.month.annualGoal || '');
+          setMonthsData(parsed.month.data || generateInitialMonthsData());
+        }
+        if (parsed.year) {
+          setYearVal(parsed.year.val || getThisYear());
+          setYearIdealState(parsed.year.idealState || '');
+          setYearGoal(parsed.year.goal || '');
+          setYearTeamTarget(parsed.year.teamTarget || '');
+          setYearTeamResult(parsed.year.teamResult || '');
+          setYearAchievement(parsed.year.achievement || '');
+          setYearGoodPoints(parsed.year.goodPoints || '');
+          setYearImprovement(parsed.year.improvement || '');
+          setYearNextAction(parsed.year.nextAction || '');
+        }
+        if (parsed.mandala) {
+          setMandalaDate(parsed.mandala.date || getToday());
+          setMandalaCenterGoal(parsed.mandala.centerGoal || '');
+          setMandalaSubGoals(parsed.mandala.subGoals || generateInitialMandalaData());
+        }
+      } catch (e) {
+        console.error("Failed to load data from localStorage", e);
+      }
+    }
+    setIsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    const dataToSave = {
+      day: { date: dayDate, goal: dayGoal, schedule: daySchedule, achievement: dayAchievement, goodThings: dayGoodThings, redo: dayRedo },
+      week: { range: weekRange, goal: weekGoal, days: weekDays, goodFlow: weekGoodFlow, improvement: weekImprovement, nextAction: weekNextAction },
+      month: { year: monthYear, annualGoal: monthAnnualGoal, data: monthsData },
+      year: { val: yearVal, idealState: yearIdealState, goal: yearGoal, teamTarget: yearTeamTarget, teamResult: yearTeamResult, achievement: yearAchievement, goodPoints: yearGoodPoints, improvement: yearImprovement, nextAction: yearNextAction },
+      mandala: { date: mandalaDate, centerGoal: mandalaCenterGoal, subGoals: mandalaSubGoals }
+    };
+    localStorage.setItem('goal_layer_data', JSON.stringify(dataToSave));
+  }, [
+    isLoaded, dayDate, dayGoal, daySchedule, dayAchievement, dayGoodThings, dayRedo,
+    weekRange, weekGoal, weekDays, weekGoodFlow, weekImprovement, weekNextAction,
+    monthYear, monthAnnualGoal, monthsData,
+    yearVal, yearIdealState, yearGoal, yearTeamTarget, yearTeamResult, yearAchievement, yearGoodPoints, yearImprovement, yearNextAction,
+    mandalaDate, mandalaCenterGoal, mandalaSubGoals
+  ]);
+
   // --- Handlers ---
   const handleDayScheduleChange = (index, value) => {
     const next = [...daySchedule];
@@ -136,13 +205,9 @@ export default function Home() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // --- Formatted Summaries ---
+  // --- Summaries ---
   const daySummary = () => {
-    const scheduleText = daySchedule
-      .filter(item => item.content.trim() !== '')
-      .map(item => `${item.time} ${item.content}`)
-      .join('\n');
-
+    const scheduleText = daySchedule.filter(i => i.content.trim() !== '').map(i => `${i.time} ${i.content}`).join('\n');
     return `■日付\n${dayDate}\n\n■1日の目標\n${dayGoal}\n\n■タイムスケジュール\n${scheduleText}\n\n■振り返り\n【達成度】\n${dayAchievement}\n\n【良かったこと】\n${dayGoodThings}\n\n【今日1日やり直せるなら】\n${dayRedo}`;
   };
 
@@ -152,13 +217,7 @@ export default function Home() {
   };
 
   const monthSummary = () => {
-    const summaryText = monthsData.map(m => `【${m.month}】
-・目標：${m.goal}
-・チーム人数：目標 ${m.teamTarget} / 結果 ${m.teamResult}
-・テーマ：${m.theme}
-・達成度：${m.rating}
-・振り返り：${m.reflection}`).join('\n\n');
-
+    const summaryText = monthsData.map(m => `【${m.month}】\n・目標：${m.goal}\n・チーム人数：目標 ${m.teamTarget} / 結果 ${m.teamResult}\n・テーマ：${m.theme}\n・達成度：${m.rating}\n・振り返り：${m.reflection}`).join('\n\n');
     return `■年\n${monthYear}\n\n■年間目標\n${monthAnnualGoal}\n\n■年間サマリー\n\n${summaryText}`;
   };
 
@@ -167,24 +226,12 @@ export default function Home() {
   };
 
   const mandalaSummary = () => {
-    const strategyText = mandalaSubGoals
-      .map((sg, i) => `${CIRCLE_NUMBERS[i]} ${sg.goal}`)
-      .join('\n');
-
-    const actionPlanText = mandalaSubGoals
-      .map((sg, i) => {
-        const actions = sg.actions
-          .filter(a => a.trim() !== '')
-          .map(a => `・${a}`)
-          .join('\n');
-        return `【${CIRCLE_NUMBERS[i]}】\n${actions || '（未入力）'}`;
-      })
-      .join('\n\n');
-
+    const strategyText = mandalaSubGoals.map((sg, i) => `${CIRCLE_NUMBERS[i]} ${sg.goal}`).join('\n');
+    const actionPlanText = mandalaSubGoals.map((sg, i) => `【${CIRCLE_NUMBERS[i]}】\n${sg.actions.filter(a => a.trim() !== '').map(a => `・${a}`).join('\n') || '（未入力）'}`).join('\n\n');
     return `■作成日\n${mandalaDate}\n\n■最終目標\n${mandalaCenterGoal}\n\n■戦略（中目標）\n\n${strategyText}\n\n■行動プラン\n\n${actionPlanText}`;
   };
 
-  // --- Render Helpers ---
+  // --- Render Content ---
   const renderTabContent = () => {
     if (activeTab === '1日') {
       return (
@@ -195,11 +242,11 @@ export default function Home() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">日付</label>
-                  <input type="text" value={dayDate} onChange={(e) => setDayDate(e.target.value)} className="w-full p-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input type="text" value={dayDate} onChange={(e) => setDayDate(e.target.value)} className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">1日の目標を設定する</label>
-                  <textarea value={dayGoal} onChange={(e) => setDayGoal(e.target.value)} placeholder="今日一番達成したいことは？" className="w-full p-3 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none" />
+                  <textarea value={dayGoal} onChange={(e) => setDayGoal(e.target.value)} placeholder="今日一番達成したいことは？" className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-24 resize-none" />
                 </div>
               </div>
             </section>
@@ -209,7 +256,7 @@ export default function Home() {
                 {daySchedule.map((item, index) => (
                   <div key={item.time} className="flex items-center gap-3">
                     <span className="w-12 text-sm font-mono text-gray-400">{item.time}</span>
-                    <input type="text" value={item.content} onChange={(e) => handleDayScheduleChange(index, e.target.value)} className="flex-1 p-2 border rounded bg-white text-sm outline-none focus:border-blue-500" placeholder="予定を入力" />
+                    <input type="text" value={item.content} onChange={(e) => handleDayScheduleChange(index, e.target.value)} className="flex-1 p-2 border rounded bg-white text-sm outline-none" placeholder="予定を入力" />
                   </div>
                 ))}
               </div>
@@ -219,15 +266,15 @@ export default function Home() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">達成度</label>
-                  <input type="text" value={dayAchievement} onChange={(e) => setDayAchievement(e.target.value)} placeholder="◎ / ○ / △ / ×" className="w-full p-2 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500" />
+                  <input type="text" value={dayAchievement} onChange={(e) => setDayAchievement(e.target.value)} placeholder="◎ / ○ / △ / ×" className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">良かったこと</label>
-                  <textarea value={dayGoodThings} onChange={(e) => setDayGoodThings(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 h-20 resize-none" />
+                  <textarea value={dayGoodThings} onChange={(e) => setDayGoodThings(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-20 resize-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">今日1日やり直せるなら</label>
-                  <textarea value={dayRedo} onChange={(e) => setDayRedo(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 h-20 resize-none" />
+                  <textarea value={dayRedo} onChange={(e) => setDayRedo(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-20 resize-none" />
                 </div>
               </div>
             </section>
@@ -254,11 +301,11 @@ export default function Home() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">期間</label>
-                  <input type="text" value={weekRange} onChange={(e) => setWeekRange(e.target.value)} className="w-full p-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input type="text" value={weekRange} onChange={(e) => setWeekRange(e.target.value)} className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">今週の目標を設定する</label>
-                  <textarea value={weekGoal} onChange={(e) => setWeekGoal(e.target.value)} placeholder="今週のメインテーマは？" className="w-full p-3 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none" />
+                  <textarea value={weekGoal} onChange={(e) => setWeekGoal(e.target.value)} placeholder="今週のメインテーマは？" className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-24 resize-none" />
                 </div>
               </div>
             </section>
@@ -283,15 +330,15 @@ export default function Home() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">良かった流れ</label>
-                  <textarea value={weekGoodFlow} onChange={(e) => setWeekGoodFlow(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 h-20 resize-none" />
+                  <textarea value={weekGoodFlow} onChange={(e) => setWeekGoodFlow(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-20 resize-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">改善ポイント</label>
-                  <textarea value={weekImprovement} onChange={(e) => setWeekImprovement(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 h-20 resize-none" />
+                  <textarea value={weekImprovement} onChange={(e) => setWeekImprovement(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-20 resize-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">来週のアクション</label>
-                  <textarea value={weekNextAction} onChange={(e) => setWeekNextAction(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 h-20 resize-none" />
+                  <textarea value={weekNextAction} onChange={(e) => setWeekNextAction(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-20 resize-none" />
                 </div>
               </div>
             </section>
@@ -318,11 +365,11 @@ export default function Home() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">年</label>
-                  <input type="text" value={monthYear} onChange={(e) => setMonthYear(e.target.value)} placeholder="YYYY" className="w-full p-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input type="text" value={monthYear} onChange={(e) => setMonthYear(e.target.value)} placeholder="YYYY" className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">年間目標</label>
-                  <textarea value={monthAnnualGoal} onChange={(e) => setMonthAnnualGoal(e.target.value)} placeholder="今年のメインゴール" className="w-full p-3 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none" />
+                  <textarea value={monthAnnualGoal} onChange={(e) => setMonthAnnualGoal(e.target.value)} placeholder="今年のメインゴール" className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-24 resize-none" />
                 </div>
               </div>
             </section>
@@ -369,15 +416,15 @@ export default function Home() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">年</label>
-                  <input type="text" value={yearVal} onChange={(e) => setYearVal(e.target.value)} placeholder="YYYY" className="w-full p-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input type="text" value={yearVal} onChange={(e) => setYearVal(e.target.value)} placeholder="YYYY" className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">どういう状態になりたいか</label>
-                  <textarea value={yearIdealState} onChange={(e) => setYearIdealState(e.target.value)} placeholder="1年後の理想像を記述" className="w-full p-3 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none" />
+                  <textarea value={yearIdealState} onChange={(e) => setYearIdealState(e.target.value)} placeholder="1年後の理想像を記述" className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-24 resize-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">年間目標</label>
-                  <textarea value={yearGoal} onChange={(e) => setYearGoal(e.target.value)} placeholder="具体的に達成したい数値や状態" className="w-full p-3 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none" />
+                  <textarea value={yearGoal} onChange={(e) => setYearGoal(e.target.value)} placeholder="具体的に達成したい数値や状態" className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-24 resize-none" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -396,19 +443,19 @@ export default function Home() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">達成度</label>
-                  <input type="text" value={yearAchievement} onChange={(e) => setYearAchievement(e.target.value)} placeholder="◎ / ○ / △ / ×" className="w-full p-2 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500" />
+                  <input type="text" value={yearAchievement} onChange={(e) => setYearAchievement(e.target.value)} placeholder="◎ / ○ / △ / ×" className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">良かった点</label>
-                  <textarea value={yearGoodPoints} onChange={(e) => setYearGoodPoints(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none" />
+                  <textarea value={yearGoodPoints} onChange={(e) => setYearGoodPoints(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-24 resize-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">改善点</label>
-                  <textarea value={yearImprovement} onChange={(e) => setYearImprovement(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none" />
+                  <textarea value={yearImprovement} onChange={(e) => setYearImprovement(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-24 resize-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">来年のアクション</label>
-                  <textarea value={yearNextAction} onChange={(e) => setYearNextAction(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none" />
+                  <textarea value={yearNextAction} onChange={(e) => setYearNextAction(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50 outline-none h-24 resize-none" />
                 </div>
               </div>
             </section>
@@ -443,7 +490,6 @@ export default function Home() {
                 </div>
               </div>
             </section>
-
             <section className="space-y-6">
               <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">戦略と行動プラン</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -451,26 +497,14 @@ export default function Home() {
                   <div key={sgIdx} className="p-5 bg-gray-50 border rounded-2xl space-y-4 shadow-sm">
                     <div className="flex items-center gap-2">
                       <span className="flex items-center justify-center w-6 h-6 bg-blue-600 text-white rounded-full text-xs font-bold">{CIRCLE_NUMBERS[sgIdx]}</span>
-                      <input 
-                        type="text" 
-                        value={sg.goal} 
-                        onChange={(e) => handleMandalaSubGoalChange(sgIdx, e.target.value)} 
-                        placeholder={`中目標 ${sgIdx + 1}`} 
-                        className="flex-1 p-2 text-sm font-bold border-b bg-transparent outline-none focus:border-blue-500"
-                      />
+                      <input type="text" value={sg.goal} onChange={(e) => handleMandalaSubGoalChange(sgIdx, e.target.value)} placeholder={`中目標 ${sgIdx + 1}`} className="flex-1 p-2 text-sm font-bold border-b bg-transparent outline-none focus:border-blue-500" />
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-gray-400 uppercase">行動リスト</label>
                       {sg.actions.map((action, aIdx) => (
                         <div key={aIdx} className="flex items-center gap-2">
                           <span className="text-[10px] text-gray-300">{aIdx + 1}</span>
-                          <input 
-                            type="text" 
-                            value={action} 
-                            onChange={(e) => handleMandalaActionChange(sgIdx, aIdx, e.target.value)} 
-                            placeholder="具体的なアクション" 
-                            className="flex-1 p-1.5 text-xs border rounded bg-white outline-none focus:ring-1 focus:ring-blue-200"
-                          />
+                          <input type="text" value={action} onChange={(e) => handleMandalaActionChange(sgIdx, aIdx, e.target.value)} placeholder="具体的なアクション" className="flex-1 p-1.5 text-xs border rounded bg-white outline-none" />
                         </div>
                       ))}
                     </div>
@@ -479,7 +513,6 @@ export default function Home() {
               </div>
             </section>
           </div>
-
           <div className="lg:w-[400px] w-full">
             <div className="sticky top-24 space-y-4">
               <div className="flex items-center justify-between">
@@ -492,7 +525,6 @@ export default function Home() {
         </div>
       );
     }
-
     return null;
   };
 
@@ -502,30 +534,17 @@ export default function Home() {
         <title>8-7シート (Goal Layer)</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
-
       <header className="bg-white border-b border-gray-200 py-6 px-4 text-center sticky top-0 z-20 shadow-sm">
         <h1 className="text-xl md:text-2xl font-black tracking-tighter">
           8-7シート <span className="text-blue-600 font-medium text-sm md:text-base ml-1">Goal Layer</span>
         </h1>
       </header>
-
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex bg-gray-200 p-1 rounded-xl mb-10 overflow-x-auto no-scrollbar shadow-inner">
           {['1日', '1週間', '1ヵ月', '1年', 'マンダラ'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 min-w-[80px] py-3 text-sm font-bold rounded-lg transition-all whitespace-nowrap ${
-                activeTab === tab
-                  ? 'bg-white text-blue-600 shadow-md'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {tab}
-            </button>
+            <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 min-w-[80px] py-3 text-sm font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white text-blue-600 shadow-md' : 'text-gray-500 hover:text-gray-700'}`}>{tab}</button>
           ))}
         </div>
-
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-10">
           <div className="mb-8 flex items-center justify-between border-b pb-4">
             <h2 className="text-2xl font-black text-gray-800 tracking-tight">{activeTab}</h2>
@@ -534,11 +553,7 @@ export default function Home() {
           {renderTabContent()}
         </div>
       </main>
-
-      <footer className="text-center py-10 text-gray-400 text-[10px] font-bold uppercase tracking-widest">
-        &copy; 2026 Goal Layer. Precision Management.
-      </footer>
-
+      <footer className="text-center py-10 text-gray-400 text-[10px] font-bold uppercase tracking-widest">&copy; 2026 Goal Layer. Precision Management.</footer>
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
