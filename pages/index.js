@@ -27,6 +27,14 @@ const generateInitialMonthsData = () => {
   }));
 };
 
+const generateInitialMandalaData = () => {
+  return Array.from({ length: 8 }, (_, i) => ({
+    id: i + 1,
+    goal: '',
+    actions: Array(8).fill('')
+  }));
+};
+
 const getToday = () => {
   const d = new Date();
   const y = d.getFullYear();
@@ -46,6 +54,8 @@ const getWeekRange = () => {
 };
 
 const getThisYear = () => new Date().getFullYear().toString();
+
+const CIRCLE_NUMBERS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧'];
 
 export default function Home() {
   // --- Global State ---
@@ -68,12 +78,12 @@ export default function Home() {
   const [weekImprovement, setWeekImprovement] = useState('');
   const [weekNextAction, setWeekNextAction] = useState('');
 
-  // --- 1ヵ月 (Monthly/Yearly Overview) State ---
+  // --- 1ヵ月 (Monthly) State ---
   const [monthYear, setMonthYear] = useState(getThisYear());
   const [monthAnnualGoal, setMonthAnnualGoal] = useState('');
   const [monthsData, setMonthsData] = useState(generateInitialMonthsData());
 
-  // --- 1年 (Yearly Life Design) State ---
+  // --- 1年 (Yearly) State ---
   const [yearVal, setYearVal] = useState(getThisYear());
   const [yearIdealState, setYearIdealState] = useState('');
   const [yearGoal, setYearGoal] = useState('');
@@ -83,6 +93,11 @@ export default function Home() {
   const [yearGoodPoints, setYearGoodPoints] = useState('');
   const [yearImprovement, setYearImprovement] = useState('');
   const [yearNextAction, setYearNextAction] = useState('');
+
+  // --- マンダラ (Mandala) State ---
+  const [mandalaDate, setMandalaDate] = useState(getToday());
+  const [mandalaCenterGoal, setMandalaCenterGoal] = useState('');
+  const [mandalaSubGoals, setMandalaSubGoals] = useState(generateInitialMandalaData());
 
   // --- Handlers ---
   const handleDayScheduleChange = (index, value) => {
@@ -101,6 +116,18 @@ export default function Home() {
     const next = [...monthsData];
     next[index][field] = value;
     setMonthsData(next);
+  };
+
+  const handleMandalaSubGoalChange = (index, value) => {
+    const next = [...mandalaSubGoals];
+    next[index].goal = value;
+    setMandalaSubGoals(next);
+  };
+
+  const handleMandalaActionChange = (subGoalIdx, actionIdx, value) => {
+    const next = [...mandalaSubGoals];
+    next[subGoalIdx].actions[actionIdx] = value;
+    setMandalaSubGoals(next);
   };
 
   const copyToClipboard = (text) => {
@@ -137,6 +164,24 @@ export default function Home() {
 
   const yearSummary = () => {
     return `■年\n${yearVal}\n\n■なりたい状態\n${yearIdealState}\n\n■年間目標\n${yearGoal}\n\n■チーム人数\n目標：${yearTeamTarget}\n結果：${yearTeamResult}\n\n■総括\n\n【達成度】\n${yearAchievement}\n\n【良かった点】\n${yearGoodPoints}\n\n【改善点】\n${yearImprovement}\n\n【来年のアクション】\n${yearNextAction}`;
+  };
+
+  const mandalaSummary = () => {
+    const strategyText = mandalaSubGoals
+      .map((sg, i) => `${CIRCLE_NUMBERS[i]} ${sg.goal}`)
+      .join('\n');
+
+    const actionPlanText = mandalaSubGoals
+      .map((sg, i) => {
+        const actions = sg.actions
+          .filter(a => a.trim() !== '')
+          .map(a => `・${a}`)
+          .join('\n');
+        return `【${CIRCLE_NUMBERS[i]}】\n${actions || '（未入力）'}`;
+      })
+      .join('\n\n');
+
+    return `■作成日\n${mandalaDate}\n\n■最終目標\n${mandalaCenterGoal}\n\n■戦略（中目標）\n\n${strategyText}\n\n■行動プラン\n\n${actionPlanText}`;
   };
 
   // --- Render Helpers ---
@@ -381,11 +426,74 @@ export default function Home() {
       );
     }
 
-    return (
-      <div className="py-20 text-center text-gray-400 bg-gray-50 rounded-2xl border-2 border-dashed">
-        {activeTab}のページ（準備中）
-      </div>
-    );
+    if (activeTab === 'マンダラ') {
+      return (
+        <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex-1 space-y-8">
+            <section className="space-y-4">
+              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">マンダラチャート設定</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">作成日</label>
+                  <input type="text" value={mandalaDate} onChange={(e) => setMandalaDate(e.target.value)} className="w-full p-2 border rounded-lg bg-gray-50 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">最終目標 (中央)</label>
+                  <input type="text" value={mandalaCenterGoal} onChange={(e) => setMandalaCenterGoal(e.target.value)} placeholder="成し遂げたいこと" className="w-full p-2 border rounded-lg bg-blue-50 border-blue-200 outline-none font-bold" />
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-6">
+              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">戦略と行動プラン</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {mandalaSubGoals.map((sg, sgIdx) => (
+                  <div key={sgIdx} className="p-5 bg-gray-50 border rounded-2xl space-y-4 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center justify-center w-6 h-6 bg-blue-600 text-white rounded-full text-xs font-bold">{CIRCLE_NUMBERS[sgIdx]}</span>
+                      <input 
+                        type="text" 
+                        value={sg.goal} 
+                        onChange={(e) => handleMandalaSubGoalChange(sgIdx, e.target.value)} 
+                        placeholder={`中目標 ${sgIdx + 1}`} 
+                        className="flex-1 p-2 text-sm font-bold border-b bg-transparent outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase">行動リスト</label>
+                      {sg.actions.map((action, aIdx) => (
+                        <div key={aIdx} className="flex items-center gap-2">
+                          <span className="text-[10px] text-gray-300">{aIdx + 1}</span>
+                          <input 
+                            type="text" 
+                            value={action} 
+                            onChange={(e) => handleMandalaActionChange(sgIdx, aIdx, e.target.value)} 
+                            placeholder="具体的なアクション" 
+                            className="flex-1 p-1.5 text-xs border rounded bg-white outline-none focus:ring-1 focus:ring-blue-200"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+
+          <div className="lg:w-[400px] w-full">
+            <div className="sticky top-24 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Mandala Preview</h3>
+                <button onClick={() => copyToClipboard(mandalaSummary())} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${copied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg'}`}>{copied ? 'Copied!' : 'Copy Summary'}</button>
+              </div>
+              <div className="bg-gray-900 text-gray-100 p-6 rounded-2xl shadow-xl font-mono text-sm whitespace-pre-wrap border border-gray-700 min-h-[500px] max-h-[70vh] overflow-y-auto leading-relaxed custom-scrollbar">{mandalaSummary()}</div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
   };
 
   return (
