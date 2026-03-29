@@ -14,6 +14,19 @@ const generateInitialWeeklyDays = () => {
   return days.map(day => ({ day, goal: '', task: '', rating: '', memo: '' }));
 };
 
+const generateInitialMonthsData = () => {
+  const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+  return months.map(m => ({
+    month: m,
+    goal: '',
+    teamTarget: '',
+    teamResult: '',
+    theme: '',
+    rating: '',
+    reflection: ''
+  }));
+};
+
 const getToday = () => {
   const d = new Date();
   const y = d.getFullYear();
@@ -55,7 +68,12 @@ export default function Home() {
   const [weekImprovement, setWeekImprovement] = useState('');
   const [weekNextAction, setWeekNextAction] = useState('');
 
-  // --- 1年 (Yearly) State ---
+  // --- 1ヵ月 (Monthly/Yearly Overview) State ---
+  const [monthYear, setMonthYear] = useState(getThisYear());
+  const [monthAnnualGoal, setMonthAnnualGoal] = useState('');
+  const [monthsData, setMonthsData] = useState(generateInitialMonthsData());
+
+  // --- 1年 (Yearly Life Design) State ---
   const [yearVal, setYearVal] = useState(getThisYear());
   const [yearIdealState, setYearIdealState] = useState('');
   const [yearGoal, setYearGoal] = useState('');
@@ -79,6 +97,12 @@ export default function Home() {
     setWeekDays(next);
   };
 
+  const handleMonthDataChange = (index, field, value) => {
+    const next = [...monthsData];
+    next[index][field] = value;
+    setMonthsData(next);
+  };
+
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -98,6 +122,17 @@ export default function Home() {
   const weekSummary = () => {
     const ratingsText = weekDays.map(d => `${d.day}：${d.rating}`).join('\n');
     return `■期間\n${weekRange}\n\n■今週の目標\n${weekGoal}\n\n■週間サマリー\n\n【達成状況】\n${ratingsText}\n\n【良かった流れ】\n${weekGoodFlow}\n\n【改善ポイント】\n${weekImprovement}\n\n【来週のアクション】\n${weekNextAction}`;
+  };
+
+  const monthSummary = () => {
+    const summaryText = monthsData.map(m => `【${m.month}】
+・目標：${m.goal}
+・チーム人数：目標 ${m.teamTarget} / 結果 ${m.teamResult}
+・テーマ：${m.theme}
+・達成度：${m.rating}
+・振り返り：${m.reflection}`).join('\n\n');
+
+    return `■年\n${monthYear}\n\n■年間目標\n${monthAnnualGoal}\n\n■年間サマリー\n\n${summaryText}`;
   };
 
   const yearSummary = () => {
@@ -223,6 +258,57 @@ export default function Home() {
                 <button onClick={() => copyToClipboard(weekSummary())} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${copied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg'}`}>{copied ? 'Copied!' : 'Copy Summary'}</button>
               </div>
               <div className="bg-gray-900 text-gray-100 p-6 rounded-2xl shadow-xl font-mono text-sm whitespace-pre-wrap border border-gray-700 min-h-[500px] leading-relaxed">{weekSummary()}</div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeTab === '1ヵ月') {
+      return (
+        <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex-1 space-y-8">
+            <section className="space-y-4">
+              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">年間概況設定</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">年</label>
+                  <input type="text" value={monthYear} onChange={(e) => setMonthYear(e.target.value)} placeholder="YYYY" className="w-full p-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">年間目標</label>
+                  <textarea value={monthAnnualGoal} onChange={(e) => setMonthAnnualGoal(e.target.value)} placeholder="今年のメインゴール" className="w-full p-3 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none" />
+                </div>
+              </div>
+            </section>
+            <section className="space-y-4">
+              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">月別カレンダー</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {monthsData.map((m, idx) => (
+                  <div key={m.month} className="p-4 bg-gray-50 border rounded-xl space-y-2">
+                    <div className="text-center font-black text-purple-600 border-b pb-1 mb-2">{m.month}</div>
+                    <div className="space-y-1">
+                      <input type="text" value={m.goal} onChange={(e) => handleMonthDataChange(idx, 'goal', e.target.value)} placeholder="月の目標" className="w-full p-1.5 text-[10px] border rounded bg-white outline-none" />
+                      <div className="flex gap-1">
+                        <input type="text" value={m.teamTarget} onChange={(e) => handleMonthDataChange(idx, 'teamTarget', e.target.value)} placeholder="人数(目)" className="w-1/2 p-1.5 text-[10px] border rounded bg-white outline-none" />
+                        <input type="text" value={m.teamResult} onChange={(e) => handleMonthDataChange(idx, 'teamResult', e.target.value)} placeholder="人数(結)" className="w-1/2 p-1.5 text-[10px] border rounded bg-white outline-none" />
+                      </div>
+                      <input type="text" value={m.theme} onChange={(e) => handleMonthDataChange(idx, 'theme', e.target.value)} placeholder="テーマ" className="w-full p-1.5 text-[10px] border rounded bg-white outline-none" />
+                      <input type="text" value={m.rating} onChange={(e) => handleMonthDataChange(idx, 'rating', e.target.value)} placeholder="達成度" className="w-full p-1.5 text-[10px] border rounded bg-white outline-none" />
+                      <textarea value={m.reflection} onChange={(e) => handleMonthDataChange(idx, 'reflection', e.target.value)} placeholder="一言振り返り" className="w-full p-1.5 text-[10px] border rounded bg-white outline-none h-12 resize-none" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+          <div className="lg:w-[400px] w-full">
+            <div className="sticky top-24 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Monthly Preview</h3>
+                <button onClick={() => copyToClipboard(monthSummary())} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${copied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg'}`}>{copied ? 'Copied!' : 'Copy Summary'}</button>
+              </div>
+              <div className="bg-gray-900 text-gray-100 p-6 rounded-2xl shadow-xl font-mono text-sm whitespace-pre-wrap border border-gray-700 min-h-[500px] max-h-[70vh] overflow-y-auto leading-relaxed custom-scrollbar">{monthSummary()}</div>
             </div>
           </div>
         </div>
