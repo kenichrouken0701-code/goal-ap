@@ -1,74 +1,235 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 
+// --- Helpers ---
+const generateInitialSchedule = () => {
+  const hours = [];
+  // 7:00 to 23:00
+  for (let i = 7; i <= 23; i++) {
+    hours.push(`${i}:00`);
+  }
+  // 0:00 to 2:00
+  for (let i = 0; i <= 2; i++) {
+    hours.push(`${i}:00`);
+  }
+  return hours.map(time => ({ time, content: '' }));
+};
+
+const getToday = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}/${m}/${day}`;
+};
+
 export default function Home() {
+  // --- State ---
   const [activeTab, setActiveTab] = useState('1日');
+  const [date, setDate] = useState(getToday());
+  const [goal, setGoal] = useState('');
+  const [schedule, setSchedule] = useState(generateInitialSchedule());
+  const [achievement, setAchievement] = useState('');
+  const [goodThings, setGoodThings] = useState('');
+  const [redo, setRedo] = useState('');
+  const [copied, setCopied] = useState(false);
 
-  const tabs = [
-    { id: '1日', label: '1日' },
-    { id: '1週間', label: '1週間' },
-    { id: '1ヵ月', label: '1ヵ月' },
-    { id: '1年', label: '1年' },
-    { id: 'マンダラ', label: 'マンダラ' },
-  ];
+  // --- Handlers ---
+  const handleScheduleChange = (index, value) => {
+    const newSchedule = [...schedule];
+    newSchedule[index].content = value;
+    setSchedule(newSchedule);
+  };
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case '1日':
-        return <div className="py-20 text-gray-600">1日のページ</div>;
-      case '1週間':
-        return <div className="py-20 text-gray-600">1週間のページ</div>;
-      case '1ヵ月':
-        return <div className="py-20 text-gray-600">1ヵ月のページ</div>;
-      case '1年':
-        return <div className="py-20 text-gray-600">1年のページ</div>;
-      case 'マンダラ':
-        return <div className="py-20 text-gray-600">マンダラチャートのページ</div>;
-      default:
-        return null;
+  const formattedSummary = () => {
+    const scheduleText = schedule
+      .filter(item => item.content.trim() !== '')
+      .map(item => `${item.time} ${item.content}`)
+      .join('\n');
+
+    return `■日付
+${date}
+
+■1日の目標
+${goal}
+
+■タイムスケジュール
+${scheduleText}
+
+■振り返り
+【達成度】
+${achievement}
+
+【良かったこと】
+${goodThings}
+
+【今日1日やり直せるなら】
+${redo}`;
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(formattedSummary());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // --- Render Helpers ---
+  const renderTabContent = () => {
+    if (activeTab === '1日') {
+      return (
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Left: Input Area */}
+          <div className="flex-1 space-y-8">
+            <section className="space-y-4">
+              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">基本情報</h3>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">日付</label>
+                  <input
+                    type="text"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full p-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">1日の目標を設定する</label>
+                  <textarea
+                    value={goal}
+                    onChange={(e) => setGoal(e.target.value)}
+                    placeholder="今日一番達成したいことは？"
+                    className="w-full p-3 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">タイムスケジュール</h3>
+              <div className="bg-gray-50 p-4 rounded-xl border space-y-2 max-h-[400px] overflow-y-auto">
+                {schedule.map((item, index) => (
+                  <div key={item.time} className="flex items-center gap-3">
+                    <span className="w-12 text-sm font-mono text-gray-500">{item.time}</span>
+                    <input
+                      type="text"
+                      value={item.content}
+                      onChange={(e) => handleScheduleChange(index, e.target.value)}
+                      className="flex-1 p-2 border rounded bg-white text-sm outline-none focus:border-blue-500"
+                      placeholder="予定を入力"
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              <h3 className="text-lg font-bold border-l-4 border-blue-600 pl-3">振り返り</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">達成度</label>
+                  <input
+                    type="text"
+                    value={achievement}
+                    onChange={(e) => setAchievement(e.target.value)}
+                    placeholder="◎ / ○ / △ / ×"
+                    className="w-full p-2 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">良かったこと</label>
+                  <textarea
+                    value={goodThings}
+                    onChange={(e) => setGoodThings(e.target.value)}
+                    className="w-full p-3 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 h-20 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">今日1日やり直せるなら</label>
+                  <textarea
+                    value={redo}
+                    onChange={(e) => setRedo(e.target.value)}
+                    className="w-full p-3 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 h-20 resize-none"
+                  />
+                </div>
+              </div>
+            </section>
+          </div>
+
+          {/* Right: Copy Area */}
+          <div className="lg:w-[400px] w-full">
+            <div className="sticky top-24 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold">コピー用プレビュー</h3>
+                <button
+                  onClick={copyToClipboard}
+                  className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
+                    copied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  {copied ? 'コピー完了！' : '内容をコピー'}
+                </button>
+              </div>
+              <div className="bg-gray-900 text-gray-100 p-6 rounded-2xl shadow-xl font-mono text-sm whitespace-pre-wrap border border-gray-700 min-h-[500px]">
+                {formattedSummary()}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
     }
+
+    return (
+      <div className="py-20 text-center text-gray-400 bg-gray-50 rounded-2xl border-2 border-dashed">
+        {activeTab}のページ（準備中）
+      </div>
+    );
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-20">
       <Head>
         <title>8-7シート (Goal Layer)</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 py-6 px-4 text-center sticky top-0 z-10">
+      <header className="bg-white border-b border-gray-200 py-6 px-4 text-center sticky top-0 z-20 shadow-sm">
         <h1 className="text-xl md:text-2xl font-bold tracking-tight">
           8-7シート <span className="text-blue-600 font-medium text-sm md:text-base ml-1">Goal Layer</span>
         </h1>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Tab Navigation */}
-        <div className="flex bg-gray-200 p-1 rounded-xl mb-8 overflow-x-auto no-scrollbar">
-          {tabs.map((tab) => (
+        <div className="flex bg-gray-200 p-1 rounded-xl mb-10 overflow-x-auto no-scrollbar shadow-inner">
+          {['1日', '1週間', '1ヵ月', '1年', 'マンダラ'].map((tab) => (
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 min-w-[80px] py-2.5 text-sm font-medium rounded-lg transition-all whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'bg-white text-blue-600 shadow-sm'
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 min-w-[80px] py-3 text-sm font-bold rounded-lg transition-all whitespace-nowrap ${
+                activeTab === tab
+                  ? 'bg-white text-blue-600 shadow-md'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {tab.label}
+              {tab}
             </button>
           ))}
         </div>
 
-        {/* Tab Content */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 text-center p-6 md:p-12">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">{activeTab}</h2>
-          <div className="border-t border-gray-50 pt-4">
-            {renderContent()}
+        {/* Content Area */}
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-10">
+          <div className="mb-8 flex items-center justify-between border-b pb-4">
+            <h2 className="text-2xl font-black text-gray-800">{activeTab}</h2>
+            <div className="text-xs font-bold text-gray-300 tracking-widest uppercase">Management Sheet</div>
           </div>
+          {renderTabContent()}
         </div>
       </main>
+
+      <footer className="text-center py-10 text-gray-400 text-xs">
+        &copy; 2026 Goal Layer. All rights reserved.
+      </footer>
 
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar {
@@ -77,6 +238,10 @@ export default function Home() {
         .no-scrollbar {
           -ms-overflow-style: none;
           scrollbar-width: none;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
       `}</style>
     </div>
