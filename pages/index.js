@@ -5,7 +5,7 @@ const TABS = ['1日', '1週間', '1ヵ月', '1年', 'マンダラ'];
 const WEEK_DAYS = ['月', '火', '水', '木', '金', '土', '日'];
 const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 const CIRCLE_NUMBERS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧'];
-const STORAGE_KEY = 'goal_layer_simple_v1';
+const STORAGE_KEY = 'goal_layer_mobile_v1';
 
 function getToday() {
   const d = new Date();
@@ -71,7 +71,6 @@ function generateInitialMandalaData() {
 function getInitialState() {
   return {
     activeTab: '1日',
-
     day: {
       date: getToday(),
       goal: '',
@@ -80,7 +79,6 @@ function getInitialState() {
       goodThings: '',
       redo: '',
     },
-
     week: {
       range: getWeekRange(),
       goal: '',
@@ -89,13 +87,11 @@ function getInitialState() {
       improvement: '',
       nextAction: '',
     },
-
     month: {
       year: getThisYear(),
       annualGoal: '',
       data: generateInitialMonthsData(),
     },
-
     year: {
       year: getThisYear(),
       idealState: '',
@@ -107,7 +103,6 @@ function getInitialState() {
       improvement: '',
       nextAction: '',
     },
-
     mandala: {
       date: getToday(),
       centerGoal: '',
@@ -118,44 +113,55 @@ function getInitialState() {
 }
 
 async function callGemini(systemText, userText) {
-  if (typeof window === 'undefined') return 'ブラウザ環境でのみ実行できます。';
+  if (typeof window === 'undefined') {
+    return 'ブラウザ環境でのみ実行できます。';
+  }
 
   const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+
   if (!apiKey) {
     return 'AI機能を使うには、VercelのEnvironment Variablesに NEXT_PUBLIC_GEMINI_API_KEY を追加してください。';
   }
 
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-  const body = {
-    contents: [
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
-        parts: [
-          {
-            text: `${systemText}\n\n${userText}`,
-          },
-        ],
-      },
-    ],
-  };
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `${systemText}\n\n${userText}`,
+                },
+              ],
+            },
+          ],
+        }),
+      }
+    );
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+    const data = await res.json();
 
-  if (!res.ok) {
-    const text = await res.text();
-    return `AI呼び出しに失敗しました: ${text}`;
+    if (!res.ok) {
+      console.error('Gemini API error:', data);
+      return `AI呼び出しに失敗しました。${data?.error?.message || '不明なエラーです。'}`;
+    }
+
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) {
+      console.error('Gemini empty response:', data);
+      return 'AIから返答を取得できませんでした。';
+    }
+
+    return text;
+  } catch (error) {
+    console.error('Gemini fetch error:', error);
+    return 'AI通信中にエラーが発生しました。';
   }
-
-  const json = await res.json();
-  return (
-    json?.candidates?.[0]?.content?.parts?.[0]?.text ||
-    'AIから返答を取得できませんでした。'
-  );
 }
 
 export default function Home() {
@@ -164,9 +170,15 @@ export default function Home() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiText, setAiText] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    const checkMobile = () => setIsMobile(window.innerWidth < 900);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -178,6 +190,8 @@ export default function Home() {
     } finally {
       setLoaded(true);
     }
+
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   useEffect(() => {
@@ -190,6 +204,7 @@ export default function Home() {
   const setActiveTab = (tab) => {
     setState((prev) => ({ ...prev, activeTab: tab }));
     setAiText('');
+    setCopied(false);
   };
 
   const updateDay = (field, value) => {
@@ -289,11 +304,11 @@ export default function Home() {
       return;
     }
 
+    const initial = getInitialState();
     setAiText('');
     setCopied(false);
 
     setState((prev) => {
-      const initial = getInitialState();
       switch (prev.activeTab) {
         case '1日':
           return { ...prev, day: initial.day };
@@ -523,8 +538,8 @@ ${actionPlanText}`;
         userText = mandalaSummary;
       }
 
-      const text = await callGemini(systemText, userText);
-      setAiText(text);
+      const result = await callGemini(systemText, userText);
+      setAiText(result);
     } catch (e) {
       console.error(e);
       setAiText('AI処理でエラーが発生しました。');
@@ -547,22 +562,23 @@ ${actionPlanText}`;
       zIndex: 10,
       backgroundColor: '#ffffff',
       borderBottom: '1px solid #e5e7eb',
-      padding: '18px 20px',
+      padding: isMobile ? '14px 14px' : '18px 20px',
     },
     container: {
       maxWidth: 1180,
       margin: '0 auto',
-      padding: 20,
+      padding: isMobile ? 12 : 20,
     },
     title: {
       margin: 0,
-      fontSize: 24,
+      fontSize: isMobile ? 20 : 24,
       fontWeight: 900,
       letterSpacing: '-0.4px',
+      lineHeight: 1.2,
     },
     subtitle: {
       color: '#2563eb',
-      fontSize: 12,
+      fontSize: isMobile ? 11 : 12,
       fontWeight: 700,
       marginLeft: 8,
     },
@@ -574,56 +590,62 @@ ${actionPlanText}`;
       borderRadius: 14,
       padding: 6,
       overflowX: 'auto',
-      marginBottom: 20,
+      marginBottom: 16,
+      WebkitOverflowScrolling: 'touch',
     },
     tabButton: (active) => ({
       border: 'none',
       cursor: 'pointer',
-      minWidth: 88,
-      padding: '12px 14px',
+      minWidth: isMobile ? 74 : 88,
+      whiteSpace: 'nowrap',
+      padding: isMobile ? '10px 12px' : '12px 14px',
       borderRadius: 10,
       backgroundColor: active ? '#ffffff' : 'transparent',
       color: active ? '#2563eb' : '#64748b',
       fontWeight: 700,
+      fontSize: isMobile ? 13 : 14,
       boxShadow: active ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+      flex: isMobile ? '0 0 auto' : 1,
     }),
     shellCard: {
       backgroundColor: '#ffffff',
       border: '1px solid #e5e7eb',
-      borderRadius: 24,
+      borderRadius: isMobile ? 18 : 24,
       boxShadow: '0 6px 18px rgba(15,23,42,0.05)',
-      padding: 24,
+      padding: isMobile ? 14 : 24,
     },
     shellTitle: {
-      margin: '0 0 22px 0',
-      fontSize: 24,
+      margin: '0 0 18px 0',
+      fontSize: isMobile ? 20 : 24,
       fontWeight: 900,
       color: '#111827',
       borderBottom: '2px solid #f1f5f9',
-      paddingBottom: 12,
+      paddingBottom: 10,
     },
     twoCol: {
       display: 'grid',
-      gridTemplateColumns: 'minmax(0, 1.4fr) minmax(320px, 0.9fr)',
-      gap: 24,
+      gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.4fr) minmax(300px, 0.9fr)',
+      gap: isMobile ? 18 : 24,
     },
     leftCol: {
       minWidth: 0,
+      order: 1,
     },
     rightCol: {
       minWidth: 0,
+      order: isMobile ? 0 : 1,
     },
     section: {
       backgroundColor: '#ffffff',
       border: '1px solid #e5e7eb',
-      borderRadius: 18,
-      padding: 20,
-      marginBottom: 18,
+      borderRadius: isMobile ? 14 : 18,
+      padding: isMobile ? 14 : 20,
+      marginBottom: 14,
     },
     sectionTitle: {
-      margin: '0 0 16px 0',
+      margin: '0 0 14px 0',
       fontWeight: 800,
-      fontSize: 16,
+      fontSize: isMobile ? 15 : 16,
       color: '#111827',
     },
     label: {
@@ -635,70 +657,78 @@ ${actionPlanText}`;
     },
     input: {
       width: '100%',
-      padding: '12px 14px',
+      padding: isMobile ? '11px 12px' : '12px 14px',
       border: '1px solid #e5e7eb',
       borderRadius: 10,
       backgroundColor: '#ffffff',
       color: '#111827',
       outline: 'none',
-      fontSize: 14,
+      fontSize: isMobile ? 13 : 14,
+      boxSizing: 'border-box',
     },
     textarea: {
       width: '100%',
-      padding: '12px 14px',
+      padding: isMobile ? '11px 12px' : '12px 14px',
       border: '1px solid #e5e7eb',
       borderRadius: 10,
       backgroundColor: '#ffffff',
       color: '#111827',
       outline: 'none',
-      fontSize: 14,
+      fontSize: isMobile ? 13 : 14,
       minHeight: 90,
       resize: 'vertical',
+      boxSizing: 'border-box',
     },
     summaryCard: {
       backgroundColor: '#ffffff',
       color: '#111827',
-      padding: 20,
-      borderRadius: 18,
+      padding: isMobile ? 14 : 20,
+      borderRadius: isMobile ? 14 : 18,
       border: '1px solid #e5e7eb',
       fontFamily: 'monospace',
-      fontSize: 13,
+      fontSize: isMobile ? 12 : 13,
+      lineHeight: 1.6,
       whiteSpace: 'pre-wrap',
-      minHeight: 280,
+      minHeight: isMobile ? 220 : 280,
       overflowWrap: 'anywhere',
+      boxSizing: 'border-box',
     },
     buttonRow: {
       display: 'flex',
       gap: 8,
       flexWrap: 'wrap',
       marginBottom: 12,
+      justifyContent: isMobile ? 'stretch' : 'flex-start',
     },
     btnPrimary: {
-      padding: '11px 16px',
+      padding: isMobile ? '10px 12px' : '11px 16px',
       borderRadius: 10,
       border: 'none',
       backgroundColor: '#2563eb',
       color: '#ffffff',
       fontWeight: 700,
       cursor: 'pointer',
+      flex: isMobile ? 1 : 'none',
     },
     btnGhost: {
-      padding: '11px 16px',
+      padding: isMobile ? '10px 12px' : '11px 16px',
       borderRadius: 10,
       border: '1px solid #cbd5e1',
       backgroundColor: '#ffffff',
       color: '#334155',
       fontWeight: 700,
       cursor: 'pointer',
+      flex: isMobile ? 1 : 'none',
     },
     btnDanger: {
-      padding: '11px 16px',
+      padding: isMobile ? '10px 12px' : '11px 16px',
       borderRadius: 10,
       border: '1px solid #fecaca',
       backgroundColor: '#fef2f2',
       color: '#dc2626',
       fontWeight: 700,
       cursor: 'pointer',
+      flex: isMobile ? 1 : 'none',
     },
   };
 
@@ -729,26 +759,34 @@ ${actionPlanText}`;
 
       <div style={styles.section}>
         <h3 style={styles.sectionTitle}>タイムスケジュール</h3>
-        <div style={{ maxHeight: 400, overflowY: 'auto', paddingRight: 6 }}>
+        <div style={{ maxHeight: isMobile ? 320 : 400, overflowY: 'auto', paddingRight: 4 }}>
           {state.day.schedule.map((item, index) => (
             <div
               key={item.time}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 12,
+                gap: 8,
                 padding: '6px 0',
                 borderBottom: '1px solid #f1f5f9',
               }}
             >
-              <span style={{ width: 56, fontSize: 12, fontWeight: 700, color: '#94a3b8' }}>
+              <span
+                style={{
+                  width: isMobile ? 46 : 56,
+                  fontSize: isMobile ? 11 : 12,
+                  fontWeight: 700,
+                  color: '#94a3b8',
+                  flexShrink: 0,
+                }}
+              >
                 {item.time}
               </span>
               <input
                 type="text"
                 value={item.content}
                 onChange={(e) => updateDaySchedule(index, e.target.value)}
-                style={{ ...styles.input, padding: '9px 12px', backgroundColor: '#f8fafc' }}
+                style={{ ...styles.input, padding: isMobile ? '8px 10px' : '9px 12px', backgroundColor: '#f8fafc' }}
               />
             </div>
           ))}
@@ -802,18 +840,20 @@ ${actionPlanText}`;
         </div>
       </div>
 
-      <div style={{ ...styles.section, overflowX: 'auto' }}>
+      <div style={{ ...styles.section, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         <h3 style={styles.sectionTitle}>デイリーログ</h3>
-        <div style={{ display: 'flex', gap: 10, minWidth: 840 }}>
+        <div style={{ display: 'flex', gap: 10, minWidth: isMobile ? 700 : 840 }}>
           {state.week.days.map((d, idx) => (
             <div
               key={d.day}
               style={{
                 flex: 1,
+                minWidth: isMobile ? 150 : 0,
                 padding: 12,
                 backgroundColor: '#f8fafc',
                 border: '1px solid #e5e7eb',
                 borderRadius: 14,
+                boxSizing: 'border-box',
               }}
             >
               <div
@@ -824,6 +864,7 @@ ${actionPlanText}`;
                   marginBottom: 10,
                   borderBottom: '1px solid #e5e7eb',
                   paddingBottom: 6,
+                  fontSize: isMobile ? 13 : 14,
                 }}
               >
                 {d.day}
@@ -912,20 +953,29 @@ ${actionPlanText}`;
 
       <div style={styles.section}>
         <h3 style={styles.sectionTitle}>月別ログ</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: 10,
+          }}
+        >
           {state.month.data.map((m, idx) => (
             <div
               key={m.month}
               style={{
-                padding: 12,
+                padding: isMobile ? 10 : 12,
                 backgroundColor: '#f8fafc',
                 borderRadius: 14,
                 border: '1px solid #e5e7eb',
                 display: 'grid',
                 gap: 6,
+                boxSizing: 'border-box',
               }}
             >
-              <div style={{ textAlign: 'center', fontWeight: 800, color: '#111827' }}>{m.month}</div>
+              <div style={{ textAlign: 'center', fontWeight: 800, color: '#111827', fontSize: isMobile ? 13 : 14 }}>
+                {m.month}
+              </div>
               <input
                 type="text"
                 value={m.goal}
@@ -933,7 +983,7 @@ ${actionPlanText}`;
                 placeholder="月の目標"
                 style={{ ...styles.input, fontSize: 12, padding: '7px 9px' }}
               />
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 6, flexDirection: isMobile ? 'column' : 'row' }}>
                 <input
                   type="text"
                   value={m.teamTarget}
@@ -1000,20 +1050,20 @@ ${actionPlanText}`;
             placeholder="年間目標"
             style={styles.textarea}
           />
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
             <input
               type="text"
               value={state.year.teamTarget}
               onChange={(e) => updateYear('teamTarget', e.target.value)}
               placeholder="チーム人数（目標）"
-              style={{ ...styles.input, flex: 1 }}
+              style={styles.input}
             />
             <input
               type="text"
               value={state.year.teamResult}
               onChange={(e) => updateYear('teamResult', e.target.value)}
               placeholder="チーム人数（結果）"
-              style={{ ...styles.input, flex: 1 }}
+              style={styles.input}
             />
           </div>
         </div>
@@ -1076,14 +1126,53 @@ ${actionPlanText}`;
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
+            gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)',
             gap: 8,
-            maxWidth: 620,
+            maxWidth: isMobile ? '100%' : 620,
             width: '100%',
-            margin: '0 auto 28px auto',
+            margin: '0 auto 20px auto',
           }}
         >
-          {gridMapping.map((item) => {
+          {gridMapping.map((item, index) => {
+            if (isMobile && item === 'center') {
+              return (
+                <div
+                  key={`center-${index}`}
+                  style={{
+                    gridColumn: '1 / -1',
+                    backgroundColor: '#eff6ff',
+                    border: '2px solid #2563eb',
+                    borderRadius: 12,
+                    padding: 10,
+                    minHeight: 100,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <label style={{ ...styles.label, color: '#2563eb', textAlign: 'center', fontSize: 10 }}>
+                    最終目標
+                  </label>
+                  <textarea
+                    value={state.mandala.centerGoal}
+                    onChange={(e) => updateMandala('centerGoal', e.target.value)}
+                    style={{
+                      width: '100%',
+                      minHeight: 60,
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      textAlign: 'center',
+                      fontWeight: 800,
+                      fontSize: 14,
+                      resize: 'none',
+                      outline: 'none',
+                      color: '#111827',
+                    }}
+                  />
+                </div>
+              );
+            }
+
             if (item === 'center') {
               return (
                 <div
@@ -1134,7 +1223,7 @@ ${actionPlanText}`;
                   border: isSelected ? '2px solid #6366f1' : '1px solid #e5e7eb',
                   borderRadius: 12,
                   padding: 10,
-                  minHeight: 120,
+                  minHeight: isMobile ? 100 : 120,
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
@@ -1170,22 +1259,24 @@ ${actionPlanText}`;
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center',
+                alignItems: isMobile ? 'flex-start' : 'center',
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: 10,
                 marginBottom: 14,
               }}
             >
-              <h3 style={{ margin: 0, fontWeight: 800, color: '#111827' }}>
+              <h3 style={{ margin: 0, fontWeight: 800, color: '#111827', fontSize: isMobile ? 15 : 16 }}>
                 {CIRCLE_NUMBERS[selected]} {state.mandala.subGoals[selected].goal || '（中目標未入力）'} のアクション
               </h3>
               <button
                 onClick={() => updateMandala('selectedIndex', null)}
-                style={{ ...styles.btnGhost, padding: '8px 12px' }}
+                style={{ ...styles.btnGhost, padding: '8px 12px', width: isMobile ? '100%' : 'auto' }}
               >
                 閉じる
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
               {state.mandala.subGoals[selected].actions.map((action, aIdx) => (
                 <div key={aIdx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ width: 22, fontSize: 12, color: '#94a3b8', fontWeight: 800 }}>{aIdx + 1}</span>
@@ -1259,15 +1350,15 @@ ${actionPlanText}`;
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center',
+                    alignItems: isMobile ? 'stretch' : 'center',
+                    flexDirection: 'column',
                     marginBottom: 12,
-                    gap: 8,
-                    flexWrap: 'wrap',
+                    gap: 10,
                   }}
                 >
                   <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Preview & Copy</h3>
 
-                  <div style={styles.buttonRow}>
+                  <div style={{ ...styles.buttonRow, width: '100%' }}>
                     <button onClick={resetCurrentTab} style={styles.btnDanger}>
                       リセット
                     </button>
@@ -1288,7 +1379,7 @@ ${actionPlanText}`;
                 <div
                   style={{
                     ...styles.summaryCard,
-                    minHeight: 220,
+                    minHeight: isMobile ? 180 : 220,
                     backgroundColor: '#f8fafc',
                   }}
                 >
@@ -1303,7 +1394,7 @@ ${actionPlanText}`;
       <footer
         style={{
           textAlign: 'center',
-          padding: '36px 20px',
+          padding: '28px 14px',
           color: '#94a3b8',
           fontSize: 12,
         }}
