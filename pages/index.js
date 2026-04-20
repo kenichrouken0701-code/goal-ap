@@ -291,7 +291,6 @@ export default function Home() {
     }
   };
 
-  // --- AI Actions ---
   const generateDaySummary = () => {
     const scheduleText = currentSchedule.filter(b => b.plan || b.actual).map(b => `${b.time} - 予定: ${b.plan || 'なし'}, 実績: ${b.actual || 'なし'}`).join('\n');
     const prompt = `【日付】${currentDisplayDate}\n【1日の目標】${currentGoal || '未入力'}\n【タイムスケジュール】\n${scheduleText || '未入力'}\n【振り返り】\n達成度：${currentOverallRating || '未入力'}\n良かったこと：${currentGoodPoints || '未入力'}\n今日1日やり直せるなら：${currentRedoPoints || '未入力'}`;
@@ -306,16 +305,17 @@ export default function Home() {
 ・達成度：${d.rating || '（未入力）'}
 ・メモ：${d.memo || '（未入力）'}`).join('\n\n');
 
-    const prompt = `【期間】${currentWeekRange}
-【今週の目標】${currentGoal || '未入力'}
-【振り返り内容】
-${currentReflection || '未入力'}
+    const prompt = `以下のデータに基づいて、1週間の振り返りサマリーを生成し、最後に「■デイリーログ」セクションとして提供されたデータをそのまま付加してください。
 
-【日別データ】
+【期間】${currentWeekRange}
+【今週の目標】${currentGoal || '未入力'}
+【振り返り内容】${currentReflection || '未入力'}
+
+【提供されたデイリーログデータ】
 ${dailyLogText}`;
 
-    const system = `あなたは優秀なコーチです。1週間の振り返りを分析し、指定のフォーマットで出力してください。
-入力が空の項目も省略せず、デイリーログまで含めて出力してください。
+    const system = `あなたは優秀なコーチです。ユーザーの1週間の活動を分析し、以下のフォーマットで出力してください。
+「■デイリーログ」セクションは、提供されたデータを正確に転記し、指定の形式で出力してください。
 
 ＜出力フォーマット＞
 ■期間
@@ -398,318 +398,502 @@ ${dailyLogText}`;
     callAi(prompt, system, true);
   };
 
+  // --- Render ---
   return (
-    <div className="min-h-screen pb-20 bg-[#f8f9fa]">
+    <div style={{ minHeight: '100vh', paddingBottom: '80px', backgroundColor: '#f8f9fa', color: '#111827', fontFamily: 'sans-serif' }}>
       <Head>
         <title>Goal Layer - 8-7シート</title>
       </Head>
 
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-gray-200 px-4 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
-              <Target className="w-5 h-5" />
+      <header style={{ 
+        position: 'sticky', 
+        top: 0, 
+        zIndex: 50, 
+        backgroundColor: 'rgba(255, 255, 255, 0.9)', 
+        backdropFilter: 'blur(8px)', 
+        borderBottom: '1px solid #e5e7eb', 
+        padding: '16px' 
+      }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyBetween: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '32px', height: '32px', backgroundColor: '#2563eb', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff' }}>
+              <Target size={20} />
             </div>
-            <h1 className="text-xl font-bold tracking-tight">8-7シート <span className="text-blue-600 font-normal text-sm ml-1">Goal Layer</span></h1>
+            <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>8-7シート <span style={{ color: '#2563eb', fontWeight: 'normal', fontSize: '14px' }}>Goal Layer</span></h1>
           </div>
-          <button onClick={() => setShowHistory(!showHistory)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <History className={`w-5 h-5 ${showHistory ? 'text-blue-600' : 'text-gray-500'}`} />
+          <div style={{ flex: 1 }} />
+          <button 
+            onClick={() => setShowHistory(!showHistory)} 
+            style={{ 
+              padding: '8px', 
+              backgroundColor: 'transparent', 
+              border: 'none', 
+              borderRadius: '50%', 
+              cursor: 'pointer', 
+              color: showHistory ? '#2563eb' : '#6b7280',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <History size={20} />
           </button>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 mt-6">
-        <div className="flex bg-gray-100 p-1 rounded-xl mb-8 max-w-3xl mx-auto">
+      <main style={{ maxWidth: '1200px', margin: '24px auto', padding: '0 16px' }}>
+        {/* Tab Navigation */}
+        <div style={{ 
+          display: 'flex', 
+          backgroundColor: '#f1f5f9', 
+          padding: '4px', 
+          borderRadius: '12px', 
+          marginBottom: '24px', 
+          maxWidth: '600px', 
+          margin: '0 auto 32px auto' 
+        }}>
           {Object.keys(PERIOD_LABELS).map((period) => (
             <button
               key={period}
               onClick={() => { setActiveTab(period); setAiResponse(null); setFormattedSummary(null); }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === period ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              style={{ 
+                flex: 1, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                gap: '8px', 
+                padding: '10px 0', 
+                borderRadius: '8px', 
+                fontSize: '14px', 
+                fontWeight: '600', 
+                border: 'none', 
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                backgroundColor: activeTab === period ? '#ffffff' : 'transparent',
+                color: activeTab === period ? '#2563eb' : '#64748b',
+                boxShadow: activeTab === period ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+              }}
             >
               {PERIOD_ICONS[period]}
-              {PERIOD_LABELS[period]}
+              <span className="hidden sm-inline">{PERIOD_LABELS[period]}</span>
             </button>
           ))}
         </div>
 
         <AnimatePresence mode="wait">
           {!showHistory ? (
-            <motion.div key="editor" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col lg:flex-row gap-8 items-start">
-              <div className="flex-1 w-full space-y-6">
-                {/* Goal Section */}
-                <section className="card p-6">
-                  {activeTab === 'day' && (
-                    <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <Calendar className="w-5 h-5 text-blue-500" />
-                        <h2 className="font-semibold">日付</h2>
+            <motion.div 
+              key="editor" 
+              initial={{ opacity: 0, y: 10 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: -10 }} 
+              style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '24px', alignItems: 'flex-start' }}>
+                
+                {/* Left Side: Editor */}
+                <div style={{ flex: '1 1 600px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  
+                  {/* Goal Card */}
+                  <section style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e5e7eb', padding: '24px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                    {activeTab === 'day' && (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid #f3f4f6' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#374151', fontWeight: 'bold' }}>
+                          <Calendar size={18} color="#2563eb" /> 日付
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <input 
+                            type="text" 
+                            value={currentDisplayDate} 
+                            onChange={(e) => setCurrentDisplayDate(e.target.value)} 
+                            style={{ 
+                              fontSize: '14px', padding: '8px 12px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', width: '120px', textAlign: 'center' 
+                            }} 
+                          />
+                          <button onClick={() => setCurrentDisplayDate(getTodayDisplayDate())} style={{ padding: '8px', color: '#2563eb', border: 'none', background: 'none', cursor: 'pointer' }}><RefreshCw size={16} /></button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <input type="text" value={currentDisplayDate} onChange={(e) => setCurrentDisplayDate(e.target.value)} className="text-sm font-mono p-2 bg-gray-50 border border-gray-200 rounded-lg outline-none w-[120px] text-center" />
-                        <button onClick={() => setCurrentDisplayDate(getTodayDisplayDate())} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><RefreshCw className="w-4 h-4" /></button>
+                    )}
+                    {activeTab === 'week' && (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid #f3f4f6' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#374151', fontWeight: 'bold' }}>
+                          <Calendar size={18} color="#2563eb" /> 期間
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <input 
+                            type="text" 
+                            value={currentWeekRange} 
+                            onChange={(e) => setCurrentWeekRange(e.target.value)} 
+                            style={{ 
+                              fontSize: '14px', padding: '8px 12px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', width: '220px', textAlign: 'center' 
+                            }} 
+                          />
+                          <button onClick={() => setCurrentWeekRange(getWeekRange())} style={{ padding: '8px', color: '#2563eb', border: 'none', background: 'none', cursor: 'pointer' }}><RefreshCw size={16} /></button>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {activeTab === 'week' && (
-                    <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <Calendar className="w-5 h-5 text-blue-500" />
-                        <h2 className="font-semibold">期間</h2>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input type="text" value={currentWeekRange} onChange={(e) => setCurrentWeekRange(e.target.value)} className="text-sm font-mono p-2 bg-gray-50 border border-gray-200 rounded-lg outline-none w-[200px] text-center" />
-                        <button onClick={() => setCurrentWeekRange(getWeekRange())} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><RefreshCw className="w-4 h-4" /></button>
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 mb-4 text-gray-700">
-                    <Target className="w-5 h-5 text-blue-500" />
-                    <h2 className="font-semibold">{PERIOD_LABELS[activeTab]}の目標</h2>
-                  </div>
-                  <textarea value={currentGoal} onChange={(e) => setCurrentGoal(e.target.value)} placeholder="具体的に何を達成したいですか？" className="w-full min-h-[80px] p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none" />
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    <button onClick={refineGoalWithAi} disabled={isAiLoading || !currentGoal} className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 disabled:opacity-50 transition-colors">
-                      <Sparkles className="w-4 h-4" /> AIで目標を改善
-                    </button>
-                    <button onClick={decomposeGoalWithAi} disabled={isAiLoading || !currentGoal} className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-600 rounded-lg text-sm font-medium hover:bg-purple-100 disabled:opacity-50 transition-colors">
-                      <ListTodo className="w-4 h-4" /> 行動に分解
-                    </button>
-                  </div>
-                </section>
+                    )}
 
-                {/* Year Tab Content */}
-                {activeTab === 'year' && (
-                  <section className="card p-6 space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h2 className="font-semibold flex items-center gap-2"><Target className="w-5 h-5 text-blue-500" /> 年間ライフデザイン</h2>
-                      <div className="flex items-center gap-2">
-                        <input type="text" value={currentYear} onChange={e => setCurrentYear(e.target.value)} className="w-20 p-2 bg-gray-50 border border-gray-200 rounded-lg text-center font-mono" />
-                        <span className="text-sm text-gray-500">年</span>
-                      </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#374151', fontWeight: 'bold' }}>
+                      <Target size={18} color="#2563eb" /> {PERIOD_LABELS[activeTab]}の目標
                     </div>
-                    <div className="space-y-4">
+                    <textarea 
+                      value={currentGoal} 
+                      onChange={(e) => setCurrentGoal(e.target.value)} 
+                      placeholder="何を達成したいですか？" 
+                      style={{ 
+                        width: '100%', minHeight: '90px', padding: '16px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '16px', fontSize: '15px', resize: 'none', boxSizing: 'border-box'
+                      }} 
+                    />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '16px' }}>
+                      <button onClick={refineGoalWithAi} disabled={isAiLoading || !currentGoal} style={{ padding: '8px 16px', backgroundColor: '#eff6ff', color: '#2563eb', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Sparkles size={14} /> AI目標改善
+                      </button>
+                      <button onClick={decomposeGoalWithAi} disabled={isAiLoading || !currentGoal} style={{ padding: '8px 16px', backgroundColor: '#faf5ff', color: '#9333ea', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <ListTodo size={14} /> 行動に分解
+                      </button>
+                    </div>
+                  </section>
+
+                  {/* Dynamic Content Section */}
+                  <section style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e5e7eb', padding: '24px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                    {activeTab === 'day' && (
                       <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">なりたい状態（ビジョン）</label>
-                        <textarea value={currentIdealState} onChange={e => setCurrentIdealState(e.target.value)} placeholder="1年後、どんな自分になっていたいですか？" className="w-full min-h-[80px] p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none resize-none" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">チーム目標（人数）</label>
-                          <input type="text" value={currentTeamSizeTarget} onChange={e => setCurrentTeamSizeTarget(e.target.value)} className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg outline-none" />
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">チーム実績</label>
-                          <input type="text" value={currentTeamSizeResult} onChange={e => setCurrentTeamSizeResult(e.target.value)} className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg outline-none" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">重要KPI</label>
-                        {currentKpis.map((kpi, idx) => (
-                          <div key={idx} className="flex gap-2">
-                            <input type="text" value={kpi.label} onChange={e => { const n = [...currentKpis]; n[idx].label = e.target.value; setCurrentKpis(n); }} className="w-1/3 p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs" />
-                            <input type="text" value={kpi.value} onChange={e => { const n = [...currentKpis]; n[idx].value = e.target.value; setCurrentKpis(n); }} placeholder="数値" className="w-2/3 p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs" />
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                          <h2 style={{ fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                            <Clock size={18} color="#f97316" /> タイムスケジュール
+                          </h2>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button onClick={optimizeScheduleWithAi} disabled={isAiLoading} style={{ padding: '6px', backgroundColor: '#fff7ed', color: '#ea580c', border: 'none', borderRadius: '8px', cursor: 'pointer' }}><Zap size={16} /></button>
+                            <button onClick={analyzeScheduleWithAi} disabled={isAiLoading} style={{ padding: '6px', backgroundColor: '#f0fdf4', color: '#16a34a', border: 'none', borderRadius: '8px', cursor: 'pointer' }}><BarChart3 size={16} /></button>
                           </div>
-                        ))}
-                      </div>
-                      <button onClick={analyzeYearlyResultsWithAi} disabled={isAiLoading} className="w-full py-3 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2">
-                        <BarChart3 className="w-4 h-4" /> 年間結果を分析
-                      </button>
-                    </div>
-                  </section>
-                )}
-
-                {/* Month Tab Content */}
-                {activeTab === 'month' && (
-                  <section className="card p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="font-semibold flex items-center gap-2"><LayoutDashboard className="w-5 h-5 text-purple-500" /> 年間カレンダー (12ヶ月俯瞰)</h2>
-                      <div className="flex gap-2">
-                        <button onClick={analyzeYearlyTrendsWithAi} disabled={isAiLoading} className="p-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors" title="年間分析"><BarChart3 className="w-4 h-4" /></button>
-                        <button onClick={generateNextYearPlanWithAi} disabled={isAiLoading} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors" title="来年プラン生成"><ArrowRight className="w-4 h-4" /></button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                      {currentMonthlyData.map((m, idx) => (
-                        <div key={m.month} className="p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-purple-200 transition-colors space-y-2">
-                          <div className="flex justify-between items-center border-b border-gray-50 pb-1">
-                            <span className="text-xs font-bold text-purple-600">{m.month}</span>
-                            <div className="flex gap-0.5">
-                              {RATINGS.map(r => <button key={r} onClick={() => updateMonthlyData(idx, 'rating', m.rating === r ? '' : r)} className={`w-3.5 h-3.5 flex items-center justify-center rounded text-[7px] ${m.rating === r ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-400'}`}>{r}</button>)}
+                        </div>
+                        <div style={{ maxHeight: '420px', overflowY: 'auto', paddingRight: '8px' }}>
+                          {currentSchedule.map((block, idx) => (
+                            <div key={block.time} style={{ display: 'grid', gridTemplateColumns: '60px 1fr 1fr 90px', gap: '8px', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
+                              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8' }}>{block.time}</div>
+                              <input 
+                                type="text" 
+                                value={block.plan} 
+                                onChange={(e) => { const n = [...currentSchedule]; n[idx].plan = e.target.value; setCurrentSchedule(n); }} 
+                                placeholder="予定" 
+                                style={{ padding: '8px', border: 'none', background: '#f9fafb', borderRadius: '6px', fontSize: '13px' }} 
+                              />
+                              <input 
+                                type="text" 
+                                value={block.actual} 
+                                onChange={(e) => { const n = [...currentSchedule]; n[idx].actual = e.target.value; setCurrentSchedule(n); }} 
+                                placeholder="実績" 
+                                style={{ padding: '8px', border: 'none', background: '#f0f9ff', borderRadius: '6px', fontSize: '13px' }} 
+                              />
+                              <div style={{ display: 'flex', gap: '2px' }}>
+                                {RATINGS.map(r => (
+                                  <button 
+                                    key={r} 
+                                    onClick={() => { const n = [...currentSchedule]; n[idx].rating = n[idx].rating === r ? '' : r; setCurrentSchedule(n); }}
+                                    style={{ 
+                                      width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', fontSize: '10px', cursor: 'pointer', border: 'none',
+                                      backgroundColor: block.rating === r ? '#2563eb' : '#eff6ff', 
+                                      color: block.rating === r ? '#ffffff' : '#2563eb'
+                                    }}
+                                  >
+                                    {r}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                          <textarea value={m.goal} onChange={e => updateMonthlyData(idx, 'goal', e.target.value)} placeholder="目標" className="w-full text-[10px] p-1 bg-gray-50 rounded outline-none h-10 resize-none" />
-                          <input type="text" value={m.theme} onChange={e => updateMonthlyData(idx, 'theme', e.target.value)} placeholder="テーマ" className="w-full text-[10px] p-1 bg-purple-50/30 rounded outline-none" />
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {/* Day Schedule */}
-                {activeTab === 'day' && (
-                  <section className="card p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <Clock className="w-5 h-5 text-orange-500" />
-                        <h2 className="font-semibold">タイムスケジュール</h2>
                       </div>
-                      <div className="flex gap-2">
-                        <button onClick={optimizeScheduleWithAi} disabled={isAiLoading} className="p-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors" title="最適化"><Zap className="w-4 h-4" /></button>
-                        <button onClick={extractFocusTasksWithAi} disabled={isAiLoading} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors" title="重要タスク"><ListTodo className="w-4 h-4" /></button>
-                        <button onClick={analyzeScheduleWithAi} disabled={isAiLoading} className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors" title="分析"><BarChart3 className="w-4 h-4" /></button>
+                    )}
+
+                    {activeTab === 'week' && (
+                      <div style={{ overflowX: 'auto' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', minWidth: '700px' }}>
+                          {WEEKDAYS.map(d => <div key={d} style={{ textAlign: 'center', fontSize: '12px', fontWeight: 'bold', padding: '8px', backgroundColor: '#f9fafb', borderRadius: '8px', color: '#64748b' }}>{d}</div>)}
+                          {currentWeeklyDays.map((d, idx) => (
+                            <div key={idx} style={{ padding: '8px', border: '1px solid #f3f4f6', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <textarea 
+                                value={d.goal} 
+                                onChange={(e) => updateWeeklyDay(idx, 'goal', e.target.value)} 
+                                placeholder="目標" 
+                                style={{ width: '100%', height: '60px', padding: '6px', border: 'none', background: '#f9fafb', borderRadius: '6px', fontSize: '11px', resize: 'none' }} 
+                              />
+                              <textarea 
+                                value={d.tasks} 
+                                onChange={(e) => updateWeeklyDay(idx, 'tasks', e.target.value)} 
+                                placeholder="タスク" 
+                                style={{ width: '100%', height: '60px', padding: '6px', border: 'none', background: '#f0f9ff', borderRadius: '6px', fontSize: '11px', resize: 'none' }} 
+                              />
+                              <div style={{ display: 'flex', gap: '2px', justifyContent: 'center' }}>
+                                {RATINGS.map(r => (
+                                  <button 
+                                    key={r} 
+                                    onClick={() => updateWeeklyDay(idx, 'rating', d.rating === r ? '' : r)}
+                                    style={{ 
+                                      flex: 1, padding: '4px 0', fontSize: '10px', borderRadius: '4px', cursor: 'pointer', border: 'none',
+                                      backgroundColor: d.rating === r ? '#2563eb' : '#eff6ff', 
+                                      color: d.rating === r ? '#ffffff' : '#2563eb'
+                                    }}
+                                  >
+                                    {r}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                    <div className="space-y-1 max-h-[400px] overflow-y-auto pr-2">
-                      {currentSchedule.map((block, idx) => (
-                        <div key={block.time} className="grid grid-cols-[60px_1fr_1fr_80px] gap-2 items-center py-2 border-b border-gray-50">
-                          <div className="text-xs font-mono text-gray-400">{block.time}</div>
-                          <input type="text" value={block.plan} onChange={(e) => { const n = [...currentSchedule]; n[idx].plan = e.target.value; setCurrentSchedule(n); }} placeholder="予定" className="text-sm p-2 bg-gray-50 rounded-lg outline-none" />
-                          <input type="text" value={block.actual} onChange={(e) => { const n = [...currentSchedule]; n[idx].actual = e.target.value; setCurrentSchedule(n); }} placeholder="実績" className="text-sm p-2 bg-blue-50/30 rounded-lg outline-none" />
-                          <div className="flex gap-0.5">
-                            {RATINGS.map(r => (
-                              <button key={r} onClick={() => { const n = [...currentSchedule]; n[idx].rating = n[idx].rating === r ? '' : r; setCurrentSchedule(n); }} className={`w-4 h-4 flex items-center justify-center rounded text-[8px] ${block.rating === r ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400'}`}>{r}</button>
-                            ))}
+                    )}
+
+                    {activeTab === 'month' && (
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                          <h2 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>12ヶ月俯瞰カレンダー</h2>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                             <input type="text" value={currentYear} onChange={e => setCurrentYear(e.target.value)} style={{ width: '60px', padding: '6px', border: '1px solid #e5e7eb', borderRadius: '8px', textAlign: 'center', fontSize: '14px' }} />
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {/* Week Data */}
-                {activeTab === 'week' && (
-                  <section className="card p-6 overflow-x-auto">
-                    <div className="grid grid-cols-7 gap-2 min-w-[600px]">
-                      {WEEKDAYS.map(d => <div key={d} className="text-center py-2 bg-gray-50 rounded text-xs font-bold">{d}</div>)}
-                      {currentWeeklyDays.map((d, idx) => (
-                        <div key={idx} className="space-y-2 p-2 bg-white border border-gray-100 rounded shadow-sm">
-                          <textarea value={d.goal} onChange={(e) => updateWeeklyDay(idx, 'goal', e.target.value)} placeholder="目標" className="w-full text-[10px] p-1 bg-gray-50 rounded outline-none h-10 resize-none" />
-                          <textarea value={d.tasks} onChange={(e) => updateWeeklyDay(idx, 'tasks', e.target.value)} placeholder="最重要タスク" className="w-full text-[10px] p-1 bg-blue-50/30 rounded outline-none h-10 resize-none" />
-                          <div className="flex justify-between gap-0.5">
-                            {RATINGS.map(r => <button key={r} onClick={() => updateWeeklyDay(idx, 'rating', d.rating === r ? '' : r)} className={`flex-1 h-4 text-[8px] rounded ${d.rating === r ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400'}`}>{r}</button>)}
-                          </div>
-                          <textarea value={d.memo} onChange={(e) => updateWeeklyDay(idx, 'memo', e.target.value)} placeholder="メモ" className="w-full text-[10px] p-1 bg-gray-50 rounded outline-none h-10 resize-none" />
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
+                          {currentMonthlyData.map((m, idx) => (
+                            <div key={m.month} style={{ padding: '12px', border: '1px solid #f3f4f6', borderRadius: '16px', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#9333ea' }}>{m.month}</span>
+                                <div style={{ display: 'flex', gap: '1px' }}>
+                                  {RATINGS.map(r => <button key={r} onClick={() => updateMonthlyData(idx, 'rating', m.rating === r ? '' : r)} style={{ width: '16px', height: '16px', fontSize: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: '3px', background: m.rating === r ? '#9333ea' : '#f5f3ff', color: m.rating === r ? '#fff' : '#9333ea' }}>{r}</button>)}
+                                </div>
+                              </div>
+                              <textarea value={m.goal} onChange={e => updateMonthlyData(idx, 'goal', e.target.value)} placeholder="目標" style={{ width: '100%', height: '50px', padding: '6px', background: '#f9fafb', border: 'none', borderRadius: '6px', fontSize: '11px', resize: 'none' }} />
+                              <input value={m.theme} onChange={e => updateMonthlyData(idx, 'theme', e.target.value)} placeholder="テーマ" style={{ width: '100%', padding: '6px', border: 'none', background: '#faf5ff', borderRadius: '6px', fontSize: '11px' }} />
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
+                      </div>
+                    )}
 
-                {/* Mandala Chart */}
-                {activeTab === 'mandala' && (
-                  <section className="card p-4 overflow-x-auto">
-                    <div className="grid grid-cols-3 gap-2 min-w-[600px]">
-                      {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(bIdx => (
-                        <div key={bIdx} className={`grid grid-cols-3 gap-1 p-1 rounded-lg ${bIdx === 4 ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
-                          {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(cIdx => {
-                            if (bIdx === 4) {
-                              if (cIdx === 4) return <textarea key={cIdx} value={currentMandalaData.centerGoal} onChange={e => setCurrentMandalaData({...currentMandalaData, centerGoal: e.target.value})} placeholder="最終目標" className="w-full aspect-square p-1 text-[8px] font-bold text-center bg-blue-600 text-white rounded outline-none resize-none" />;
-                              const sIdx = cIdx < 4 ? cIdx : cIdx - 1;
-                              return <textarea key={cIdx} value={currentMandalaData.subGoals[sIdx].goal} onChange={e => { const n = [...currentMandalaData.subGoals]; n[sIdx].goal = e.target.value; setCurrentMandalaData({...currentMandalaData, subGoals: n}); }} placeholder={`中目標${sIdx+1}`} className="w-full aspect-square p-1 text-[7px] font-bold text-center bg-white border border-blue-200 rounded outline-none resize-none" />;
-                            }
-                            const sIdx = bIdx < 4 ? bIdx : bIdx - 1;
-                            if (cIdx === 4) return <div key={cIdx} className="w-full aspect-square p-1 text-[7px] font-bold text-center bg-blue-100 text-blue-800 rounded flex items-center justify-center break-all">{currentMandalaData.subGoals[sIdx].goal || `中目標${sIdx+1}`}</div>;
-                            const aIdx = cIdx < 4 ? cIdx : cIdx - 1;
-                            return <textarea key={cIdx} value={currentMandalaData.subGoals[sIdx].actions[aIdx]} onChange={e => { const n = [...currentMandalaData.subGoals]; n[sIdx].actions[aIdx] = e.target.value; setCurrentMandalaData({...currentMandalaData, subGoals: n}); }} placeholder="行動" className="w-full aspect-square p-1 text-[6px] text-center bg-white border border-gray-200 rounded outline-none resize-none" />;
-                          })}
+                    {activeTab === 'year' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                        <div style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: '12px' }}>
+                          <h2 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '4px' }}>年間ライフデザイン</h2>
+                          <p style={{ fontSize: '12px', color: '#6b7280' }}>1年後、どうありたいですか？</p>
                         </div>
-                      ))}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                           <div>
+                             <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>なりたい状態 (ビジョン)</label>
+                             <textarea value={currentIdealState} onChange={e => setCurrentIdealState(e.target.value)} style={{ width: '100%', minHeight: '80px', padding: '12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '14px', resize: 'none' }} />
+                           </div>
+                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                             <div>
+                               <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>チーム/構成目標</label>
+                               <input value={currentTeamSizeTarget} onChange={e => setCurrentTeamSizeTarget(e.target.value)} style={{ width: '100%', padding: '10px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }} />
+                             </div>
+                             <div>
+                               <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>現在の実績</label>
+                               <input value={currentTeamSizeResult} onChange={e => setCurrentTeamSizeResult(e.target.value)} style={{ width: '100%', padding: '10px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }} />
+                             </div>
+                           </div>
+                           <div>
+                              <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>重要KPIチャート</label>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {currentKpis.map((kpi, idx) => (
+                                  <div key={idx} style={{ display: 'flex', gap: '8px' }}>
+                                    <input value={kpi.label} onChange={e => {const n=[...currentKpis]; n[idx].label=e.target.value; setCurrentKpis(n)}} style={{ flex: 1, padding: '8px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '13px' }} />
+                                    <input value={kpi.value} onChange={e => {const n=[...currentKpis]; n[idx].value=e.target.value; setCurrentKpis(n)}} placeholder="数値" style={{ flex: 1, padding: '8px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '13px' }} />
+                                  </div>
+                                ))}
+                              </div>
+                           </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeTab === 'mandala' && (
+                      <div style={{ overflowX: 'auto' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', minWidth: '800px', backgroundColor: '#f1f5f9', padding: '10px', borderRadius: '16px' }}>
+                          {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(bIdx => (
+                            <div key={bIdx} style={{ 
+                              display: 'grid', 
+                              gridTemplateColumns: 'repeat(3, 1fr)', 
+                              gap: '4px', 
+                              padding: '6px', 
+                              backgroundColor: bIdx === 4 ? '#eff6ff' : '#ffffff', 
+                              borderRadius: '10px',
+                              border: bIdx === 4 ? '1px solid #3b82f6' : '1px solid #e2e8f0'
+                            }}>
+                              {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(cIdx => {
+                                if (bIdx === 4) {
+                                  if (cIdx === 4) return <textarea key={cIdx} value={currentMandalaData.centerGoal} onChange={e => setCurrentMandalaData({...currentMandalaData, centerGoal: e.target.value})} placeholder="最終目標" style={{ width: '100%', aspectRatio: '1', padding: '4px', textAlign: 'center', fontSize: '10px', fontWeight: 'bold', border: 'none', background: '#2563eb', color: '#fff', borderRadius: '4px', resize: 'none' }} />;
+                                  const sIdx = cIdx < 4 ? cIdx : cIdx - 1;
+                                  return <textarea key={cIdx} value={currentMandalaData.subGoals[sIdx].goal} onChange={e => { const n = [...currentMandalaData.subGoals]; n[sIdx].goal = e.target.value; setCurrentMandalaData({...currentMandalaData, subGoals: n}); }} placeholder={`目標${sIdx+1}`} style={{ width: '100%', aspectRatio: '1', padding: '4px', textAlign: 'center', fontSize: '9px', fontWeight: 'bold', border: 'none', background: '#fff', color: '#1e40af', borderRadius: '4px', resize: 'none' }} />;
+                                }
+                                const sIdx = bIdx < 4 ? bIdx : bIdx - 1;
+                                if (cIdx === 4) return <div key={cIdx} style={{ width: '100%', aspectRatio: '1', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: '9px', fontWeight: 'bold', background: '#dbeafe', color: '#1e40af', borderRadius: '4px', overflow: 'hidden', lineClamp: 3 }}>{currentMandalaData.subGoals[sIdx].goal || `目標${sIdx+1}`}</div>;
+                                const aIdx = cIdx < 4 ? cIdx : cIdx - 1;
+                                return <textarea key={cIdx} value={currentMandalaData.subGoals[sIdx].actions[aIdx]} onChange={e => { const n = [...currentMandalaData.subGoals]; n[sIdx].actions[aIdx] = e.target.value; setCurrentMandalaData({...currentMandalaData, subGoals: n}); }} placeholder="行動" style={{ width: '100%', aspectRatio: '1', padding: '4px', textAlign: 'center', fontSize: '8px', border: 'none', background: '#f8fafc', color: '#334155', borderRadius: '4px', resize: 'none' }} />;
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </section>
+
+                  {/* Reflection Card */}
+                  <section style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e5e7eb', padding: '24px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: '#374151', fontWeight: 'bold' }}>
+                      <MessageSquare size={18} color="#10b981" /> 振り返りと気づき
+                    </div>
+                    {activeTab === 'day' ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          {RATINGS.map(r => (
+                            <button 
+                              key={r} 
+                              onClick={() => setCurrentOverallRating(currentOverallRating === r ? '' : r)}
+                              style={{ 
+                                flex: 1, padding: '12px 0', border: '2px solid', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s',
+                                borderColor: currentOverallRating === r ? '#2563eb' : '#f3f4f6',
+                                backgroundColor: currentOverallRating === r ? '#2563eb' : '#ffffff',
+                                color: currentOverallRating === r ? '#ffffff' : '#94a3b8'
+                              }}
+                            >
+                              {r || 'なし'}
+                            </button>
+                          ))}
+                        </div>
+                        <textarea value={currentGoodPoints} onChange={e => setCurrentGoodPoints(e.target.value)} placeholder="今日良かったこと・成果" style={{ width: '100%', minHeight: '60px', padding: '12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '14px', resize: 'none' }} />
+                        <textarea value={currentRedoPoints} onChange={e => setCurrentRedoPoints(e.target.value)} placeholder="明日への改善点・やり直すなら" style={{ width: '100%', minHeight: '60px', padding: '12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '14px', resize: 'none' }} />
+                      </div>
+                    ) : (
+                      <textarea 
+                        value={currentReflection} 
+                        onChange={e => setCurrentReflection(e.target.value)} 
+                        placeholder="今期間の総括、マインドの変化、次のアクション..." 
+                        style={{ width: '100%', minHeight: '120px', padding: '16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '16px', fontSize: '14px', resize: 'none' }} 
+                      />
+                    )}
+                    <div style={{ marginTop: '16px' }}>
+                      <button onClick={summarizeReflectionWithAi} disabled={isAiLoading || (!currentReflection && !currentGoodPoints)} style={{ padding: '8px 16px', backgroundColor: '#ecfdf5', color: '#10b981', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Sparkles size={14} /> AIで振り返りを整理
+                      </button>
                     </div>
                   </section>
-                )}
 
-                {/* Reflection Section */}
-                <section className="card p-6">
-                  <div className="flex items-center gap-2 mb-4 text-gray-700">
-                    <MessageSquare className="w-5 h-5 text-green-500" />
-                    <h2 className="font-semibold">振り返り</h2>
+                  {/* Actions Footer */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+                    <button 
+                      onClick={() => { if(activeTab==='day') generateDaySummary(); if(activeTab==='week') generateWeekSummary(); if(activeTab==='mandala') generateMandalaSummary(); }}
+                      disabled={isAiLoading}
+                      style={{ padding: '16px', backgroundColor: '#ffffff', border: '2px solid #2563eb', color: '#2563eb', borderRadius: '16px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    >
+                      <FileText size={18} /> まとめ生成
+                    </button>
+                    <button 
+                      onClick={handleReset}
+                      style={{ padding: '16px', backgroundColor: '#ffffff', border: '2px solid #e5e7eb', color: '#6b7280', borderRadius: '16px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    >
+                      <RefreshCw size={18} /> クリア
+                    </button>
+                    <button 
+                      onClick={handleSave}
+                      disabled={!currentGoal.trim() && activeTab !== 'day'}
+                      style={{ padding: '16px', backgroundColor: '#2563eb', border: 'none', color: '#ffffff', borderRadius: '16px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(37,99,235,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    >
+                      <Save size={18} /> 保存する
+                    </button>
                   </div>
-                  {activeTab === 'day' ? (
-                    <div className="space-y-4">
-                      <div className="flex gap-2">
-                        {RATINGS.map(r => <button key={r} onClick={() => setCurrentOverallRating(currentOverallRating === r ? '' : r)} className={`flex-1 py-2 rounded-xl border-2 transition-all font-bold ${currentOverallRating === r ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-100 text-gray-400'}`}>{r || 'なし'}</button>)}
-                      </div>
-                      <textarea value={currentGoodPoints} onChange={e => setCurrentGoodPoints(e.target.value)} placeholder="良かったこと" className="w-full min-h-[60px] p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none text-sm resize-none" />
-                      <textarea value={currentRedoPoints} onChange={e => setCurrentRedoPoints(e.target.value)} placeholder="今日1日やり直せるなら" className="w-full min-h-[60px] p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none text-sm resize-none" />
-                      <button onClick={summarizeReflectionWithAi} disabled={isAiLoading || (!currentGoodPoints && !currentRedoPoints)} className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 disabled:opacity-50 transition-colors">
-                        <Sparkles className="w-4 h-4" /> AIで振り返りを要約
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <textarea value={currentReflection} onChange={e => setCurrentReflection(e.target.value)} placeholder="気づきや成果、課題" className="w-full min-h-[100px] p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none resize-none" />
-                      <button onClick={summarizeReflectionWithAi} disabled={isAiLoading || !currentReflection} className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 disabled:opacity-50 transition-colors">
-                        <Sparkles className="w-4 h-4" /> AIで振り返りを要約
-                      </button>
+                </div>
+
+                {/* Right Side: AI Results */}
+                <aside style={{ flex: '1 1 350px', display: 'flex', flexDirection: 'column', gap: '24px', position: 'sticky', top: '90px', maxHeight: 'calc(100vh - 120px)' }}>
+                  
+                  {isAiLoading && (
+                    <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e5e7eb' }}>
+                      <RefreshCw size={32} style={{ color: '#2563eb', animation: 'spin 2s linear infinite' }} />
+                      <p style={{ marginTop: '12px', fontSize: '14px', color: '#6b7280' }}>AI分析中...</p>
                     </div>
                   )}
-                </section>
 
-                <div className="grid grid-cols-3 gap-4">
-                  <button onClick={() => { if(activeTab==='day') generateDaySummary(); if(activeTab==='week') generateWeekSummary(); if(activeTab==='mandala') generateMandalaSummary(); }} disabled={isAiLoading} className="py-4 bg-white border-2 border-blue-600 text-blue-600 rounded-2xl font-bold hover:bg-blue-50 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
-                    <FileText className="w-5 h-5" /> まとめを生成
-                  </button>
-                  <button onClick={handleReset} className="py-4 bg-white border-2 border-gray-300 text-gray-500 rounded-2xl font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
-                    <RefreshCw className="w-5 h-5" /> リセット
-                  </button>
-                  <button onClick={handleSave} disabled={!currentGoal.trim() && activeTab !== 'day'} className="py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg hover:bg-blue-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
-                    <Save className="w-5 h-5" /> 保存する
-                  </button>
-                </div>
-              </div>
+                  {aiResponse && !isAiLoading && (
+                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ backgroundColor: '#eff6ff', borderRadius: '20px', border: '1px solid #dbeafe', padding: '20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                        <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                          <Sparkles size={18} /> AIアドバイス
+                        </h3>
+                        <button onClick={() => copyToClipboard(aiResponse)} style={{ padding: '6px', backgroundColor: '#ffffff', border: 'none', borderRadius: '6px', color: '#2563eb', cursor: 'pointer' }}>
+                          {copied ? <Check size={14} /> : <Copy size={14} />}
+                        </button>
+                      </div>
+                      <div style={{ fontSize: '13px', lineHeight: '1.6', color: '#1e3a8a', maxHeight: '200px', overflowY: 'auto' }}>
+                        <ReactMarkdown>{aiResponse}</ReactMarkdown>
+                      </div>
+                    </motion.div>
+                  )}
 
-              {/* Right Column: AI Output */}
-              <div className="lg:w-[400px] w-full space-y-6 lg:sticky lg:top-24 h-fit">
-                {isAiLoading && (
-                  <div className="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                    <RefreshCw className="w-8 h-8 text-blue-500 animate-spin mb-4" />
-                    <p className="text-sm text-gray-500">AI思考中...</p>
-                  </div>
-                )}
+                  {formattedSummary && !isAiLoading && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '2px solid #111827', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <h3 style={{ fontSize: '15px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                          <FileText size={18} /> コピー用まとめ
+                        </h3>
+                        <button 
+                          onClick={() => copyToClipboard(formattedSummary)} 
+                          style={{ 
+                            padding: '6px 12px', backgroundColor: '#111827', border: 'none', color: '#fff', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' 
+                          }}
+                        >
+                          {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? '完了' : 'コピー'}
+                        </button>
+                      </div>
+                      <pre style={{ 
+                        margin: 0, 
+                        padding: '16px', 
+                        backgroundColor: '#f9fafb', 
+                        borderRadius: '12px', 
+                        fontSize: '13px', 
+                        lineHeight: '1.5', 
+                        whiteSpace: 'pre-wrap', 
+                        maxHeight: '400px', 
+                        overflowY: 'auto',
+                        fontFamily: 'monospace',
+                        color: '#111827',
+                        border: '1px solid #e5e7eb'
+                      }}>
+                        {formattedSummary}
+                      </pre>
+                    </motion.div>
+                  )}
 
-                {aiResponse && !isAiLoading && (
-                  <motion.section initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-blue-50 border border-blue-100 rounded-2xl p-6 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-bold text-blue-900 flex items-center gap-2"><Sparkles className="w-5 h-5 text-blue-600" /> AIアドバイス</h3>
-                      <button onClick={() => copyToClipboard(aiResponse)} className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-blue-600">
-                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      </button>
+                  {!aiResponse && !formattedSummary && !isAiLoading && (
+                    <div style={{ border: '2px dashed #e5e7eb', borderRadius: '20px', padding: '48px 24px', textAlign: 'center', color: '#94a3b8' }}>
+                      <Sparkles size={32} style={{ marginBottom: '12px', opacity: 0.3 }} />
+                      <p style={{ fontSize: '13px' }}>AIの分析結果やコピー用の<br />まとめを表示します</p>
                     </div>
-                    <div className="prose prose-blue prose-sm max-w-none text-blue-800"><ReactMarkdown>{aiResponse}</ReactMarkdown></div>
-                  </motion.section>
-                )}
-
-                {formattedSummary && !isAiLoading && (
-                  <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-gray-900 text-gray-100 rounded-2xl p-6 shadow-xl">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-bold flex items-center gap-2"><FileText className="w-5 h-5 text-blue-400" /> まとめ（コピー用）</h3>
-                      <button onClick={() => copyToClipboard(formattedSummary)} className="flex items-center gap-1 px-3 py-1 bg-gray-800 hover:bg-gray-700 rounded-lg text-xs transition-colors">
-                        {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />} {copied ? '完了' : 'コピー'}
-                      </button>
-                    </div>
-                    <pre className="whitespace-pre-wrap font-sans text-sm bg-gray-800/50 p-4 rounded-xl border border-gray-700 overflow-x-auto max-h-[500px]">{formattedSummary}</pre>
-                  </motion.section>
-                )}
-
-                {!aiResponse && !formattedSummary && !isAiLoading && (
-                  <div className="hidden lg:flex flex-col items-center justify-center py-20 border-2 border-dashed border-gray-100 rounded-2xl text-gray-300">
-                    <Sparkles className="w-12 h-12 mb-4 opacity-20" />
-                    <p className="text-sm">生成結果がここに表示されます</p>
-                  </div>
-                )}
+                  )}
+                </aside>
               </div>
             </motion.div>
           ) : (
-            <motion.div key="history" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-              <h2 className="text-lg font-bold flex items-center gap-2"><History className="w-5 h-5 text-blue-600" /> {PERIOD_LABELS[activeTab]}の履歴</h2>
+            <motion.div key="history" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '800px', margin: '0 auto' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <History size={24} color="#2563eb" /> {PERIOD_LABELS[activeTab]}の記録一覧
+              </h2>
               {filteredEntries.length === 0 ? (
-                <div className="text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200 text-gray-400">記録がありません</div>
+                <div style={{ textAlign: 'center', padding: '80px', backgroundColor: '#ffffff', borderRadius: '24px', border: '2px dashed #e5e7eb', color: '#94a3b8' }}>
+                  記録はまだありません
+                </div>
               ) : (
                 filteredEntries.map(entry => (
-                  <div key={entry.id} className="card p-6 hover:border-blue-200 transition-colors">
-                    <div className="text-xs text-gray-400 mb-2">{entry.displayDate || entry.weekRange || new Date(entry.date).toLocaleDateString()}</div>
-                    <h3 className="font-bold text-gray-800 mb-2">{entry.goal || "無題の目標"}</h3>
-                    <p className="text-sm text-gray-600 italic">&ldquo;{entry.reflection}&rdquo;</p>
+                  <div key={entry.id} style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e5e7eb', transition: 'all 0.2s', cursor: 'default' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 'bold', backgroundColor: '#eff6ff', padding: '2px 8px', borderRadius: '6px' }}>
+                        {entry.displayDate || entry.weekRange || new Date(entry.date).toLocaleDateString()}
+                      </span>
+                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>{new Date(entry.createdAt).toLocaleTimeString()}</span>
+                    </div>
+                    <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', margin: '4px 0 12px 0' }}>{entry.goal || "無題の目標"}</h3>
+                    <div style={{ fontSize: '14px', color: '#4b5563', lineHeight: '1.6', whiteSpace: 'pre-wrap', borderTop: '1px solid #f3f4f6', paddingTop: '12px' }}>
+                      {entry.reflection}
+                    </div>
                   </div>
                 ))
               )}
@@ -717,6 +901,19 @@ ${dailyLogText}`;
           )}
         </AnimatePresence>
       </main>
+
+      <style jsx global>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        body { margin: 0; padding: 0; }
+        .card { transition: all 0.2s ease-in-out; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        @media (max-width: 640px) {
+           .sm-inline { display: none; }
+        }
+      `}</style>
     </div>
   );
 }
