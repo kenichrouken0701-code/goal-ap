@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 
-const STORAGE_KEY = 'goal-layer-complete-v1';
+const STORAGE_KEY = 'goal-layer-safe-v2';
 const TABS = ['1日', '1週間', '1ヵ月', '1年', 'マンダラ'];
 const WEEK_DAYS = ['月', '火', '水', '木', '金', '土', '日'];
 const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
@@ -111,6 +111,30 @@ function getInitialState() {
   };
 }
 
+function normalizeMandala(rawMandala, fallback) {
+  const safe = rawMandala || {};
+  const rawList = Array.isArray(safe.list) ? safe.list : [];
+  const normalizedList = Array.from({ length: 8 }, (_, i) => {
+    const item = rawList[i] || {};
+    const rawActions = Array.isArray(item.actions) ? item.actions : [];
+    return {
+      id: i,
+      goal: typeof item.goal === 'string' ? item.goal : '',
+      actions: Array.from({ length: 8 }, (_, idx) =>
+        typeof rawActions[idx] === 'string' ? rawActions[idx] : ''
+      ),
+    };
+  });
+
+  return {
+    ...fallback,
+    ...safe,
+    date: typeof safe.date === 'string' ? safe.date : fallback.date,
+    center: typeof safe.center === 'string' ? safe.center : fallback.center,
+    list: normalizedList,
+  };
+}
+
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -134,14 +158,70 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
+      const initial = getInitialState();
+
       if (raw) {
         const parsed = JSON.parse(raw);
-        setData((prev) => ({ ...prev, ...parsed }));
+
+        setData({
+          ...initial,
+          ...parsed,
+          day: {
+            ...initial.day,
+            ...(parsed.day || {}),
+            schedule:
+              Array.isArray(parsed?.day?.schedule) && parsed.day.schedule.length > 0
+                ? parsed.day.schedule.map((v) => ({
+                    time: typeof v?.time === 'string' ? v.time : '',
+                    content: typeof v?.content === 'string' ? v.content : '',
+                  }))
+                : initial.day.schedule,
+          },
+          week: {
+            ...initial.week,
+            ...(parsed.week || {}),
+            days:
+              Array.isArray(parsed?.week?.days) && parsed.week.days.length === 7
+                ? parsed.week.days.map((v, i) => ({
+                    day: typeof v?.day === 'string' ? v.day : WEEK_DAYS[i],
+                    goal: typeof v?.goal === 'string' ? v.goal : '',
+                    task: typeof v?.task === 'string' ? v.task : '',
+                    rate: typeof v?.rate === 'string' ? v.rate : '',
+                    memo: typeof v?.memo === 'string' ? v.memo : '',
+                  }))
+                : initial.week.days,
+          },
+          month: {
+            ...initial.month,
+            ...(parsed.month || {}),
+            list:
+              Array.isArray(parsed?.month?.list) && parsed.month.list.length === 12
+                ? parsed.month.list.map((v, i) => ({
+                    month: typeof v?.month === 'string' ? v.month : MONTHS[i],
+                    goal: typeof v?.goal === 'string' ? v.goal : '',
+                    teamTarget: typeof v?.teamTarget === 'string' ? v.teamTarget : '',
+                    teamResult: typeof v?.teamResult === 'string' ? v.teamResult : '',
+                    theme: typeof v?.theme === 'string' ? v.theme : '',
+                    rate: typeof v?.rate === 'string' ? v.rate : '',
+                    memo: typeof v?.memo === 'string' ? v.memo : '',
+                  }))
+                : initial.month.list,
+          },
+          year: {
+            ...initial.year,
+            ...(parsed.year || {}),
+          },
+          mandala: normalizeMandala(parsed.mandala, initial.mandala),
+        });
+      } else {
+        setData(initial);
       }
     } catch (e) {
       console.error(e);
+      setData(getInitialState());
     } finally {
       setLoaded(true);
     }
@@ -149,7 +229,11 @@ export default function Home() {
 
   useEffect(() => {
     if (!loaded || typeof window === 'undefined') return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+      console.error(e);
+    }
   }, [data, loaded]);
 
   const setTab = (tab) => {
@@ -160,15 +244,20 @@ export default function Home() {
 
   const saveNow = () => {
     if (typeof window === 'undefined') return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const resetCurrentTab = () => {
     if (typeof window !== 'undefined' && !window.confirm(`${data.tab}の入力内容をリセットしますか？`)) {
       return;
     }
+
     const initial = getInitialState();
 
     setData((prev) => {
@@ -992,7 +1081,7 @@ ${actions}`;
           }}
         >
           <div style={{ fontSize: 12, fontWeight: 900, color: '#2563eb', marginBottom: 6 }}>
-            {NUMS[item]}
+            {CIRCLE_NUMBERS[item]}
           </div>
 
           <textarea
