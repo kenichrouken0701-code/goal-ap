@@ -1,919 +1,1315 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
-import { 
-  Calendar, 
-  LayoutDashboard, 
-  Target, 
-  MessageSquare, 
-  Sparkles, 
-  History, 
-  Plus, 
-  Save, 
-  RefreshCw, 
-  Clock,
-  ArrowRight,
-  Zap,
-  BarChart3,
-  ListTodo,
-  Copy,
-  Check,
-  FileText
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { GoogleGenAI } from "@google/genai";
-import ReactMarkdown from 'react-markdown';
 
-// --- Constants & Helpers ---
-const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || '' });
-
-const PERIOD_LABELS = {
-  day: '1日',
-  week: '1週間',
-  month: '1ヵ月',
-  year: '1年',
-  mandala: 'マンダラ'
-};
-
-const PERIOD_ICONS = {
-  day: <Clock className="w-4 h-4" />,
-  week: <Calendar className="w-4 h-4" />,
-  month: <LayoutDashboard className="w-4 h-4" />,
-  year: <Target className="w-4 h-4" />,
-  mandala: <Zap className="w-4 h-4" />
-};
-
-const RATINGS = ['◎', '○', '△', '×'];
-const WEEKDAYS = ['月', '火', '水', '木', '金', '土', '日'];
+const TABS = ['1日', '1週間', '1ヵ月', '1年', 'マンダラ'];
+const WEEK_DAYS = ['月', '火', '水', '木', '金', '土', '日'];
 const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+const CIRCLE_NUMBERS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧'];
+const STORAGE_KEY = 'goal_layer_simple_v1';
 
-const getWeekRange = (baseDate = new Date()) => {
-  const date = new Date(baseDate);
-  const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(date.setDate(diff));
-  const formatDate = (d) => `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  return `${formatDate(monday)}～${formatDate(sunday)}`;
-};
-
-const getTodayDisplayDate = () => {
+function getToday() {
   const d = new Date();
   return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-};
+}
 
-const generateInitialSchedule = () => {
-  const blocks = [];
-  for (let i = 7; i <= 23; i++) blocks.push({ time: `${i.toString().padStart(2, '0')}:00`, plan: '', actual: '', rating: '', memo: '' });
-  for (let i = 0; i <= 2; i++) blocks.push({ time: `${i.toString().padStart(2, '0')}:00`, plan: '', actual: '', rating: '', memo: '' });
-  return blocks;
-};
+function getThisYear() {
+  return String(new Date().getFullYear());
+}
 
-const generateInitialWeeklyDays = () => WEEKDAYS.map(day => ({ day, goal: '', tasks: '', rating: '', memo: '' }));
-const generateInitialMonthlyData = () => MONTHS.map(month => ({ month, goal: '', theme: '', rating: '', reflection: '', teamSizeTarget: '', teamSizeResult: '' }));
-const generateInitialMandalaData = () => ({ centerGoal: '', subGoals: Array(8).fill(null).map(() => ({ goal: '', actions: Array(8).fill('') })) });
+function getWeekRange() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(now);
+  monday.setDate(diff);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
 
-// --- Main Component ---
+  const format = (d) =>
+    `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+
+  return `${format(monday)}～${format(sunday)}`;
+}
+
+function generateInitialSchedule() {
+  const hours = [];
+  for (let i = 7; i <= 23; i += 1) hours.push(`${String(i).padStart(2, '0')}:00`);
+  for (let i = 0; i <= 2; i += 1) hours.push(`${String(i).padStart(2, '0')}:00`);
+  return hours.map((time) => ({ time, content: '' }));
+}
+
+function generateInitialWeekDays() {
+  return WEEK_DAYS.map((day) => ({
+    day,
+    goal: '',
+    task: '',
+    rating: '',
+    memo: '',
+  }));
+}
+
+function generateInitialMonthsData() {
+  return MONTHS.map((month) => ({
+    month,
+    goal: '',
+    teamTarget: '',
+    teamResult: '',
+    theme: '',
+    rating: '',
+    reflection: '',
+  }));
+}
+
+function generateInitialMandalaData() {
+  return Array.from({ length: 8 }, (_, i) => ({
+    id: i + 1,
+    goal: '',
+    actions: Array(8).fill(''),
+  }));
+}
+
+function getInitialState() {
+  return {
+    activeTab: '1日',
+
+    day: {
+      date: getToday(),
+      goal: '',
+      schedule: generateInitialSchedule(),
+      achievement: '',
+      goodThings: '',
+      redo: '',
+    },
+
+    week: {
+      range: getWeekRange(),
+      goal: '',
+      days: generateInitialWeekDays(),
+      goodFlow: '',
+      improvement: '',
+      nextAction: '',
+    },
+
+    month: {
+      year: getThisYear(),
+      annualGoal: '',
+      data: generateInitialMonthsData(),
+    },
+
+    year: {
+      year: getThisYear(),
+      idealState: '',
+      goal: '',
+      teamTarget: '',
+      teamResult: '',
+      achievement: '',
+      goodPoints: '',
+      improvement: '',
+      nextAction: '',
+    },
+
+    mandala: {
+      date: getToday(),
+      centerGoal: '',
+      subGoals: generateInitialMandalaData(),
+      selectedIndex: null,
+    },
+  };
+}
+
+async function callGemini(systemText, userText) {
+  if (typeof window === 'undefined') return 'ブラウザ環境でのみ実行できます。';
+
+  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+  if (!apiKey) {
+    return 'AI機能を使うには、VercelのEnvironment Variablesに NEXT_PUBLIC_GEMINI_API_KEY を追加してください。';
+  }
+
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+  const body = {
+    contents: [
+      {
+        parts: [
+          {
+            text: `${systemText}\n\n${userText}`,
+          },
+        ],
+      },
+    ],
+  };
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    return `AI呼び出しに失敗しました: ${text}`;
+  }
+
+  const json = await res.json();
+  return (
+    json?.candidates?.[0]?.content?.parts?.[0]?.text ||
+    'AIから返答を取得できませんでした。'
+  );
+}
+
 export default function Home() {
-  const [activeTab, setActiveTab] = useState('day');
-  const [entries, setEntries] = useState([]);
-  const [currentGoal, setCurrentGoal] = useState('');
-  const [currentTheme, setCurrentTheme] = useState('');
-  const [currentWeekRange, setCurrentWeekRange] = useState(getWeekRange());
-  const [currentDisplayDate, setCurrentDisplayDate] = useState(getTodayDisplayDate());
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear().toString());
-  const [currentReflection, setCurrentReflection] = useState('');
-  const [currentGoodPoints, setCurrentGoodPoints] = useState('');
-  const [currentRedoPoints, setCurrentRedoPoints] = useState('');
-  const [currentOverallRating, setCurrentOverallRating] = useState('');
-  const [achievementLevel, setAchievementLevel] = useState(0);
-  const [currentSchedule, setCurrentSchedule] = useState(generateInitialSchedule());
-  const [currentWeeklyDays, setCurrentWeeklyDays] = useState(generateInitialWeeklyDays());
-  const [currentMonthlyData, setCurrentMonthlyData] = useState(generateInitialMonthlyData());
-  const [currentIdealState, setCurrentIdealState] = useState('');
-  const [currentTeamSizeTarget, setCurrentTeamSizeTarget] = useState('');
-  const [currentTeamSizeResult, setCurrentTeamSizeResult] = useState('');
-  const [currentKpis, setCurrentKpis] = useState([{ label: '売上', value: '' }, { label: '契約数', value: '' }]);
-  const [currentMandalaData, setCurrentMandalaData] = useState(generateInitialMandalaData());
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [aiResponse, setAiResponse] = useState(null);
-  const [formattedSummary, setFormattedSummary] = useState(null);
-  const [showHistory, setShowHistory] = useState(false);
+  const [state, setState] = useState(getInitialState());
   const [copied, setCopied] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiText, setAiText] = useState('');
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem('goal_layer_entries');
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        try { setEntries(JSON.parse(saved)); } catch (e) { console.error('Failed to load entries', e); }
+        const parsed = JSON.parse(saved);
+        setState((prev) => ({ ...prev, ...parsed }));
       }
+    } catch (e) {
+      console.error('load error', e);
+    } finally {
+      setLoaded(true);
     }
   }, []);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem('goal_layer_entries', JSON.stringify(entries));
+    if (!loaded || typeof window === 'undefined') return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }, [state, loaded]);
+
+  const activeTab = state.activeTab;
+
+  const setActiveTab = (tab) => {
+    setState((prev) => ({ ...prev, activeTab: tab }));
+    setAiText('');
+  };
+
+  const updateDay = (field, value) => {
+    setState((prev) => ({
+      ...prev,
+      day: { ...prev.day, [field]: value },
+    }));
+  };
+
+  const updateDaySchedule = (index, value) => {
+    setState((prev) => {
+      const next = [...prev.day.schedule];
+      next[index] = { ...next[index], content: value };
+      return {
+        ...prev,
+        day: { ...prev.day, schedule: next },
+      };
+    });
+  };
+
+  const updateWeek = (field, value) => {
+    setState((prev) => ({
+      ...prev,
+      week: { ...prev.week, [field]: value },
+    }));
+  };
+
+  const updateWeekDay = (index, field, value) => {
+    setState((prev) => {
+      const next = [...prev.week.days];
+      next[index] = { ...next[index], [field]: value };
+      return {
+        ...prev,
+        week: { ...prev.week, days: next },
+      };
+    });
+  };
+
+  const updateMonth = (field, value) => {
+    setState((prev) => ({
+      ...prev,
+      month: { ...prev.month, [field]: value },
+    }));
+  };
+
+  const updateMonthItem = (index, field, value) => {
+    setState((prev) => {
+      const next = [...prev.month.data];
+      next[index] = { ...next[index], [field]: value };
+      return {
+        ...prev,
+        month: { ...prev.month, data: next },
+      };
+    });
+  };
+
+  const updateYear = (field, value) => {
+    setState((prev) => ({
+      ...prev,
+      year: { ...prev.year, [field]: value },
+    }));
+  };
+
+  const updateMandala = (field, value) => {
+    setState((prev) => ({
+      ...prev,
+      mandala: { ...prev.mandala, [field]: value },
+    }));
+  };
+
+  const updateMandalaGoal = (index, value) => {
+    setState((prev) => {
+      const next = [...prev.mandala.subGoals];
+      next[index] = { ...next[index], goal: value };
+      return {
+        ...prev,
+        mandala: { ...prev.mandala, subGoals: next },
+      };
+    });
+  };
+
+  const updateMandalaAction = (goalIndex, actionIndex, value) => {
+    setState((prev) => {
+      const next = [...prev.mandala.subGoals];
+      const nextActions = [...next[goalIndex].actions];
+      nextActions[actionIndex] = value;
+      next[goalIndex] = { ...next[goalIndex], actions: nextActions };
+      return {
+        ...prev,
+        mandala: { ...prev.mandala, subGoals: next },
+      };
+    });
+  };
+
+  const resetCurrentTab = () => {
+    if (typeof window !== 'undefined' && !window.confirm(`${activeTab}タブの内容をリセットしますか？`)) {
+      return;
     }
-  }, [entries]);
 
-  const filteredEntries = useMemo(() => entries.filter(e => e.period === activeTab).sort((a, b) => b.createdAt - a.createdAt), [entries, activeTab]);
+    setAiText('');
+    setCopied(false);
 
-  const handleSave = () => {
-    if (!currentGoal.trim() && activeTab !== 'day') return;
-    if (activeTab === 'day' && !currentGoal.trim() && currentSchedule.every(b => !b.plan && !b.actual)) return;
-
-    let combinedReflection = currentReflection;
-    if (activeTab === 'day') {
-      combinedReflection = `【達成度】${currentOverallRating || '未設定'}\n【良かったこと】${currentGoodPoints}\n【今日1日やり直せるなら】${currentRedoPoints}`;
-    }
-
-    const newEntry = {
-      id: crypto.randomUUID(),
-      period: activeTab,
-      date: new Date().toISOString(),
-      goal: currentGoal,
-      theme: ['week', 'month', 'year'].includes(activeTab) ? currentTheme : undefined,
-      weekRange: activeTab === 'week' ? currentWeekRange : undefined,
-      displayDate: ['day', 'mandala'].includes(activeTab) ? currentDisplayDate : undefined,
-      year: ['month', 'year'].includes(activeTab) ? currentYear : undefined,
-      idealState: activeTab === 'year' ? currentIdealState : undefined,
-      teamSizeTarget: activeTab === 'year' ? currentTeamSizeTarget : undefined,
-      teamSizeResult: activeTab === 'year' ? currentTeamSizeResult : undefined,
-      kpis: activeTab === 'year' ? currentKpis : undefined,
-      reflection: combinedReflection,
-      achievementLevel,
-      aiSuggestions: aiResponse || undefined,
-      schedule: activeTab === 'day' ? currentSchedule : undefined,
-      weeklyData: activeTab === 'week' ? currentWeeklyDays : undefined,
-      monthlyData: activeTab === 'month' ? currentMonthlyData : undefined,
-      mandalaData: activeTab === 'mandala' ? currentMandalaData : undefined,
-      createdAt: Date.now()
-    };
-
-    setEntries([newEntry, ...entries]);
-    resetForm();
+    setState((prev) => {
+      const initial = getInitialState();
+      switch (prev.activeTab) {
+        case '1日':
+          return { ...prev, day: initial.day };
+        case '1週間':
+          return { ...prev, week: initial.week };
+        case '1ヵ月':
+          return { ...prev, month: initial.month };
+        case '1年':
+          return { ...prev, year: initial.year };
+        case 'マンダラ':
+          return { ...prev, mandala: initial.mandala };
+        default:
+          return prev;
+      }
+    });
   };
 
-  const resetForm = () => {
-    setCurrentGoal('');
-    setCurrentTheme('');
-    setCurrentDisplayDate(getTodayDisplayDate());
-    setCurrentReflection('');
-    setCurrentGoodPoints('');
-    setCurrentRedoPoints('');
-    setCurrentOverallRating('');
-    setAchievementLevel(0);
-    setAiResponse(null);
-    setFormattedSummary(null);
-    setCurrentIdealState('');
-    setCurrentTeamSizeTarget('');
-    setCurrentTeamSizeResult('');
-    setCurrentKpis([{ label: '売上', value: '' }, { label: '契約数', value: '' }]);
-    if (activeTab === 'day') setCurrentSchedule(generateInitialSchedule());
-    if (activeTab === 'week') {
-      setCurrentWeeklyDays(generateInitialWeeklyDays());
-      setCurrentWeekRange(getWeekRange());
-    }
-    if (activeTab === 'month') {
-      setCurrentMonthlyData(generateInitialMonthlyData());
-      setCurrentYear(new Date().getFullYear().toString());
-    }
-    if (activeTab === 'mandala') setCurrentMandalaData(generateInitialMandalaData());
-  };
-
-  const handleReset = () => {
-    if (typeof window !== "undefined" && window.confirm('本当にこのタブの入力内容をリセットしますか？')) {
-      resetForm();
-    }
-  };
-
-  const updateWeeklyDay = (idx, field, value) => {
-    const next = [...currentWeeklyDays];
-    next[idx][field] = value;
-    setCurrentWeeklyDays(next);
-  };
-
-  const updateMonthlyData = (idx, field, value) => {
-    const next = [...currentMonthlyData];
-    next[idx][field] = value;
-    setCurrentMonthlyData(next);
-  };
-
-  const refineGoalWithAi = () => {
-    if (!currentGoal.trim()) return;
-    const prompt = `あなたは目標設定の専門コーチです。ユーザーの入力した目標を「具体的・測定可能・実行可能」に改善してください。\n\n目標：${currentGoal}`;
-    const system = "あなたは目標設定の専門コーチです。改善後の目標、不足している要素、今すぐやるべき行動（3つ）を日本語で出力してください。";
-    callAi(prompt, system);
-  };
-
-  const decomposeGoalWithAi = () => {
-    if (!currentGoal.trim()) return;
-    const prompt = `長期目標を短期行動に分解してください。\n\n目標：${currentGoal}`;
-    const system = "長期目標を短期行動に分解してください。月ごとの目標、週ごとの行動、今日やること、を日本語で出力してください。";
-    callAi(prompt, system);
-  };
-
-  const summarizeReflectionWithAi = () => {
-    const isDayTab = activeTab === 'day';
-    const reflectionContent = isDayTab 
-      ? `良かったこと: ${currentGoodPoints}\n今日1日やり直せるなら: ${currentRedoPoints}`
-      : currentReflection;
-    if (!reflectionContent.trim()) return;
-    const prompt = `あなたは振り返り分析の専門家です。入力内容から成果と課題を明確にしてください。\n\n振り返り内容：\n${reflectionContent}`;
-    const system = "あなたは振り返り分析の専門家です。達成できたこと、うまくいかなかった原因、次の改善アクション（3つ）を日本語で出力してください。";
-    callAi(prompt, system);
-  };
-
-  const analyzeYearlyResultsWithAi = () => {
-    const prompt = `【年度】${currentYear}\n【なりたい状態】${currentIdealState}\n【チーム目標】${currentTeamSizeTarget}人\n【チーム結果】${currentTeamSizeResult}人\n【KPI】${currentKpis.map(k => `${k.label}: ${k.value}`).join(', ')}\n【振り返り】${currentReflection}`;
-    const system = "あなたは経営・キャリアコンサルタントです。年間の数値を分析し、強みと来年度への課題を日本語で出力してください。";
-    callAi(prompt, system);
-  };
-
-  const analyzeYearlyTrendsWithAi = () => {
-    const dataText = currentMonthlyData.map(m => `${m.month}: 目標=${m.goal}, 達成度=${m.rating}`).join('\n');
-    const prompt = `【年度】${currentYear}\n【12ヶ月のデータ】\n${dataText}`;
-    const system = "12ヶ月の目標と達成度の推移から、ユーザーの行動パターンや季節ごとの傾向を分析し、日本語で出力してください。";
-    callAi(prompt, system);
-  };
-
-  const generateNextYearPlanWithAi = () => {
-    const dataText = currentMonthlyData.map(m => `${m.month}: 目標=${m.goal}, 達成度=${m.rating}`).join('\n');
-    const prompt = `【今年度のデータ】\n${dataText}\n\nこれらを踏まえて来年度のプランを提案してください。`;
-    const system = "今年の実績を踏まえ、来年度の飛躍に向けた4つのクォーター別戦略を日本語で提案してください。";
-    callAi(prompt, system);
-  };
-
-  const optimizeScheduleWithAi = () => {
-    const scheduleText = currentSchedule.filter(b => b.plan).map(b => `${b.time}: ${b.plan}`).join('\n');
-    const prompt = `【今日の目標】${currentGoal}\n【現在の予定】\n${scheduleText}`;
-    const system = "時間管理の専門家として、目標達成率を高めるためのスケジュール改善案（休憩の入れ方、集中時間の確保など）を日本語で提案してください。";
-    callAi(prompt, system);
-  };
-
-  const extractFocusTasksWithAi = () => {
-    const allTasks = currentSchedule.filter(b => b.plan).map(b => b.plan).join(', ');
-    const prompt = `【目標】${currentGoal}\n【予定タスク】${allTasks}`;
-    const system = "目標達成に最も寄与する「最優先タスク」を3つ絞り込み、その理由と実行のコツを日本語で出力してください。";
-    callAi(prompt, system);
-  };
-
-  const analyzeScheduleWithAi = () => {
-    const scheduleText = currentSchedule.filter(b => b.plan || b.actual).map(b => `${b.time} - 予定: ${b.plan}, 実績: ${b.actual}, 評価: ${b.rating}`).join('\n');
-    const prompt = `【1日の記録】\n${scheduleText}`;
-    const system = "1日の予定と実績の乖離を分析し、時間の使い方の癖と明日に向けた改善アドバイスを日本語で出力してください。";
-    callAi(prompt, system);
-  };
-
-  const copyToClipboard = (text) => {
-    if (typeof window !== "undefined") {
-      navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const callAi = async (prompt, systemInstruction, isSummary = false) => {
-    setIsAiLoading(true);
+  const copyText = async (text) => {
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: { systemInstruction }
-      });
-      if (isSummary) setFormattedSummary(response.text);
-      else setAiResponse(response.text);
-    } catch (error) {
-      console.error('AI Error:', error);
-      setAiResponse("AIの呼び出しに失敗しました。");
-    } finally {
-      setIsAiLoading(false);
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const el = document.createElement('textarea');
+        el.value = text;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      console.error('copy error', e);
     }
   };
 
-  const generateDaySummary = () => {
-    const scheduleText = currentSchedule.filter(b => b.plan || b.actual).map(b => `${b.time} - 予定: ${b.plan || 'なし'}, 実績: ${b.actual || 'なし'}`).join('\n');
-    const prompt = `【日付】${currentDisplayDate}\n【1日の目標】${currentGoal || '未入力'}\n【タイムスケジュール】\n${scheduleText || '未入力'}\n【振り返り】\n達成度：${currentOverallRating || '未入力'}\n良かったこと：${currentGoodPoints || '未入力'}\n今日1日やり直せるなら：${currentRedoPoints || '未入力'}`;
-    const system = "あなたは優秀なアシスタントです。指定されたフォーマットに従って、1日のまとめを日本語で出力してください。入力が空の項目は省略してください。\n\n＜出力フォーマット＞\n■日付\n{YYYY/MM/DD}\n---\n■1日の目標\n{目標}\n---\n■タイムスケジュール\n{7:00〜2:00の範囲で整理}\n---\n■振り返り\n・達成度：{◎ / ○ / △ / ×}\n・良かったこと：{内容}\n・改善：{改善案}\n---";
-    callAi(prompt, system, true);
-  };
+  const daySummary = useMemo(() => {
+    const scheduleText = state.day.schedule
+      .filter((item) => item.content.trim() !== '')
+      .map((item) => `${item.time} ${item.content}`)
+      .join('\n');
 
-  const generateWeekSummary = () => {
-    const dailyLogText = currentWeeklyDays.map(d => `【${d.day}】
-・目標：${d.goal || '（未入力）'}
-・最重要タスク：${d.tasks || '（未入力）'}
-・達成度：${d.rating || '（未入力）'}
-・メモ：${d.memo || '（未入力）'}`).join('\n\n');
+    return `■日付
+${state.day.date}
 
-    const prompt = `以下のデータに基づいて、1週間の振り返りサマリーを生成し、最後に「■デイリーログ」セクションとして提供されたデータをそのまま付加してください。
+■1日の目標
+${state.day.goal}
 
-【期間】${currentWeekRange}
-【今週の目標】${currentGoal || '未入力'}
-【振り返り内容】${currentReflection || '未入力'}
+■タイムスケジュール
+${scheduleText}
 
-【提供されたデイリーログデータ】
-${dailyLogText}`;
+■振り返り
+【達成度】
+${state.day.achievement}
 
-    const system = `あなたは優秀なコーチです。ユーザーの1週間の活動を分析し、以下のフォーマットで出力してください。
-「■デイリーログ」セクションは、提供されたデータを正確に転記し、指定の形式で出力してください。
+【良かったこと】
+${state.day.goodThings}
 
-＜出力フォーマット＞
-■期間
-{期間}
+【今日1日やり直せるなら】
+${state.day.redo}`;
+  }, [state.day]);
+
+  const weekSummary = useMemo(() => {
+    const ratingsText = state.week.days.map((d) => `${d.day}：${d.rating}`).join('\n');
+
+    const dailyLogText = state.week.days
+      .map(
+        (d) => `【${d.day}】
+・目標：${d.goal}
+・最重要タスク：${d.task}
+・達成度：${d.rating}
+・メモ：${d.memo}`
+      )
+      .join('\n\n');
+
+    return `■期間
+${state.week.range}
 
 ■今週の目標
-{今週の目標}
+${state.week.goal}
 
 ■週間サマリー
 
 【達成状況】
-月：{達成度}
-火：{達成度}
-水：{達成度}
-木：{達成度}
-金：{達成度}
-土：{達成度}
-日：{達成度}
+${ratingsText}
 
 【良かった流れ】
-{分析}
+${state.week.goodFlow}
 
 【改善ポイント】
-{分析}
+${state.week.improvement}
 
 【来週のアクション】
-{分析}
+${state.week.nextAction}
 
 ■デイリーログ
 
-【月】
-・目標：{goal}
-・最重要タスク：{task}
-・達成度：{rating}
-・メモ：{memo}
+${dailyLogText}`;
+  }, [state.week]);
 
-【火】
-・目標：{goal}
-・最重要タスク：{task}
-・達成度：{rating}
-・メモ：{memo}
+  const monthSummary = useMemo(() => {
+    const text = state.month.data
+      .map(
+        (m) => `【${m.month}】
+・目標：${m.goal}
+・チーム人数：目標 ${m.teamTarget} / 結果 ${m.teamResult}
+・テーマ：${m.theme}
+・達成度：${m.rating}
+・振り返り：${m.reflection}`
+      )
+      .join('\n\n');
 
-【水】
-・目標：{goal}
-・最重要タスク：{task}
-・達成度：{rating}
-・メモ：{memo}
+    return `■年
+${state.month.year}
 
-【木】
-・目標：{goal}
-・最重要タスク：{task}
-・達成度：{rating}
-・メモ：{memo}
+■年間目標
+${state.month.annualGoal}
 
-【金】
-・目標：{goal}
-・最重要タスク：{task}
-・達成度：{rating}
-・メモ：{memo}
+■年間サマリー
 
-【土】
-・目標：{goal}
-・最重要タスク：{task}
-・達成度：{rating}
-・メモ：{memo}
+${text}`;
+  }, [state.month]);
 
-【日】
-・目標：{goal}
-・最重要タスク：{task}
-・達成度：{rating}
-・メモ：{memo}`;
+  const yearSummary = useMemo(() => {
+    return `■年
+${state.year.year}
 
-    callAi(prompt, system, true);
+■なりたい状態
+${state.year.idealState}
+
+■年間目標
+${state.year.goal}
+
+■チーム人数
+目標：${state.year.teamTarget}
+結果：${state.year.teamResult}
+
+■総括
+
+【達成度】
+${state.year.achievement}
+
+【良かった点】
+${state.year.goodPoints}
+
+【改善点】
+${state.year.improvement}
+
+【来年のアクション】
+${state.year.nextAction}`;
+  }, [state.year]);
+
+  const mandalaSummary = useMemo(() => {
+    const strategyText = state.mandala.subGoals
+      .map((sg, i) => `${CIRCLE_NUMBERS[i]} ${sg.goal}`)
+      .join('\n');
+
+    const actionPlanText = state.mandala.subGoals
+      .map((sg, i) => {
+        const actions = sg.actions
+          .filter((a) => a.trim() !== '')
+          .map((a) => `・${a}`)
+          .join('\n');
+        return `【${CIRCLE_NUMBERS[i]} ${sg.goal}】
+${actions || '（未入力）'}`;
+      })
+      .join('\n\n');
+
+    return `■作成日
+${state.mandala.date}
+
+■最終目標
+${state.mandala.centerGoal}
+
+■中目標
+${strategyText}
+
+■行動プラン
+
+${actionPlanText}`;
+  }, [state.mandala]);
+
+  const currentSummary = useMemo(() => {
+    switch (activeTab) {
+      case '1日':
+        return daySummary;
+      case '1週間':
+        return weekSummary;
+      case '1ヵ月':
+        return monthSummary;
+      case '1年':
+        return yearSummary;
+      case 'マンダラ':
+        return mandalaSummary;
+      default:
+        return '';
+    }
+  }, [activeTab, daySummary, weekSummary, monthSummary, yearSummary, mandalaSummary]);
+
+  const handleAI = async () => {
+    setAiLoading(true);
+    setAiText('');
+
+    try {
+      let systemText = '';
+      let userText = '';
+
+      if (activeTab === '1日') {
+        systemText =
+          'あなたは優秀なアシスタントです。入力された1日の内容を整理し、改善ポイントと簡潔なまとめを日本語で出力してください。';
+        userText = daySummary;
+      } else if (activeTab === '1週間') {
+        systemText =
+          'あなたは優秀なコーチです。1週間の記録を分析し、良かった流れ、改善ポイント、来週のアクションを日本語でわかりやすく出力してください。';
+        userText = weekSummary;
+      } else if (activeTab === '1ヵ月') {
+        systemText =
+          'あなたは優秀な振り返りコーチです。1年の12ヶ月ログを見て、全体傾向と改善ポイントを日本語で簡潔にまとめてください。';
+        userText = monthSummary;
+      } else if (activeTab === '1年') {
+        systemText =
+          'あなたは優秀なビジネスコーチです。1年の目標と結果から、総括と来年の改善アクションを日本語で出力してください。';
+        userText = yearSummary;
+      } else {
+        systemText =
+          'あなたは思考整理コーチです。マンダラチャートの内容を見て、重要な戦略ポイントと今すぐやるべきことを日本語で簡潔にまとめてください。';
+        userText = mandalaSummary;
+      }
+
+      const text = await callGemini(systemText, userText);
+      setAiText(text);
+    } catch (e) {
+      console.error(e);
+      setAiText('AI処理でエラーが発生しました。');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
-  const generateMandalaSummary = () => {
-    const subGoalsText = currentMandalaData.subGoals.map((sg, i) => sg.goal ? `${i + 1}\n【中目標】\n${sg.goal}\n【行動】\n${sg.actions.filter(a => a).map(a => `・${a}`).join('\n') || '未入力'}` : '').filter(t => t).join('\n\n');
-    const prompt = `【作成日】${currentDisplayDate}\n【最終目標（中央）】${currentMandalaData.centerGoal || '未入力'}\n【中目標（8要素）と各行動】\n${subGoalsText}`;
-    const system = "あなたは思考整理と目標達成の専門コーチです。マンダラチャートのまとめを日本語で出力してください。\n\n＜出力フォーマット＞\n■作成日\n{YYYY/MM/DD}\n---\n■最終目標\n{目標}\n---\n■戦略（8要素）\n1. {中目標1}...\n---\n■行動プラン\n【{中目標1}】\n・{行動}...";
-    callAi(prompt, system, true);
+  const styles = {
+    page: {
+      minHeight: '100vh',
+      backgroundColor: '#f8fafc',
+      color: '#111827',
+      fontFamily: 'sans-serif',
+      paddingBottom: 48,
+    },
+    header: {
+      position: 'sticky',
+      top: 0,
+      zIndex: 10,
+      backgroundColor: '#ffffff',
+      borderBottom: '1px solid #e5e7eb',
+      padding: '18px 20px',
+    },
+    container: {
+      maxWidth: 1180,
+      margin: '0 auto',
+      padding: 20,
+    },
+    title: {
+      margin: 0,
+      fontSize: 24,
+      fontWeight: 900,
+      letterSpacing: '-0.4px',
+    },
+    subtitle: {
+      color: '#2563eb',
+      fontSize: 12,
+      fontWeight: 700,
+      marginLeft: 8,
+    },
+    tabsWrap: {
+      display: 'flex',
+      gap: 8,
+      backgroundColor: '#f1f5f9',
+      border: '1px solid #e5e7eb',
+      borderRadius: 14,
+      padding: 6,
+      overflowX: 'auto',
+      marginBottom: 20,
+    },
+    tabButton: (active) => ({
+      border: 'none',
+      cursor: 'pointer',
+      minWidth: 88,
+      padding: '12px 14px',
+      borderRadius: 10,
+      backgroundColor: active ? '#ffffff' : 'transparent',
+      color: active ? '#2563eb' : '#64748b',
+      fontWeight: 700,
+      boxShadow: active ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+    }),
+    shellCard: {
+      backgroundColor: '#ffffff',
+      border: '1px solid #e5e7eb',
+      borderRadius: 24,
+      boxShadow: '0 6px 18px rgba(15,23,42,0.05)',
+      padding: 24,
+    },
+    shellTitle: {
+      margin: '0 0 22px 0',
+      fontSize: 24,
+      fontWeight: 900,
+      color: '#111827',
+      borderBottom: '2px solid #f1f5f9',
+      paddingBottom: 12,
+    },
+    twoCol: {
+      display: 'grid',
+      gridTemplateColumns: 'minmax(0, 1.4fr) minmax(320px, 0.9fr)',
+      gap: 24,
+    },
+    leftCol: {
+      minWidth: 0,
+    },
+    rightCol: {
+      minWidth: 0,
+    },
+    section: {
+      backgroundColor: '#ffffff',
+      border: '1px solid #e5e7eb',
+      borderRadius: 18,
+      padding: 20,
+      marginBottom: 18,
+    },
+    sectionTitle: {
+      margin: '0 0 16px 0',
+      fontWeight: 800,
+      fontSize: 16,
+      color: '#111827',
+    },
+    label: {
+      display: 'block',
+      fontSize: 12,
+      color: '#64748b',
+      marginBottom: 6,
+      fontWeight: 700,
+    },
+    input: {
+      width: '100%',
+      padding: '12px 14px',
+      border: '1px solid #e5e7eb',
+      borderRadius: 10,
+      backgroundColor: '#ffffff',
+      color: '#111827',
+      outline: 'none',
+      fontSize: 14,
+    },
+    textarea: {
+      width: '100%',
+      padding: '12px 14px',
+      border: '1px solid #e5e7eb',
+      borderRadius: 10,
+      backgroundColor: '#ffffff',
+      color: '#111827',
+      outline: 'none',
+      fontSize: 14,
+      minHeight: 90,
+      resize: 'vertical',
+    },
+    summaryCard: {
+      backgroundColor: '#ffffff',
+      color: '#111827',
+      padding: 20,
+      borderRadius: 18,
+      border: '1px solid #e5e7eb',
+      fontFamily: 'monospace',
+      fontSize: 13,
+      whiteSpace: 'pre-wrap',
+      minHeight: 280,
+      overflowWrap: 'anywhere',
+    },
+    buttonRow: {
+      display: 'flex',
+      gap: 8,
+      flexWrap: 'wrap',
+      marginBottom: 12,
+    },
+    btnPrimary: {
+      padding: '11px 16px',
+      borderRadius: 10,
+      border: 'none',
+      backgroundColor: '#2563eb',
+      color: '#ffffff',
+      fontWeight: 700,
+      cursor: 'pointer',
+    },
+    btnGhost: {
+      padding: '11px 16px',
+      borderRadius: 10,
+      border: '1px solid #cbd5e1',
+      backgroundColor: '#ffffff',
+      color: '#334155',
+      fontWeight: 700,
+      cursor: 'pointer',
+    },
+    btnDanger: {
+      padding: '11px 16px',
+      borderRadius: 10,
+      border: '1px solid #fecaca',
+      backgroundColor: '#fef2f2',
+      color: '#dc2626',
+      fontWeight: 700,
+      cursor: 'pointer',
+    },
   };
 
-  // --- Render ---
+  const renderDay = () => (
+    <div>
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>基本情報</h3>
+        <div style={{ display: 'grid', gap: 14 }}>
+          <div>
+            <label style={styles.label}>日付</label>
+            <input
+              type="text"
+              value={state.day.date}
+              onChange={(e) => updateDay('date', e.target.value)}
+              style={styles.input}
+            />
+          </div>
+          <div>
+            <label style={styles.label}>1日の目標を設定する</label>
+            <textarea
+              value={state.day.goal}
+              onChange={(e) => updateDay('goal', e.target.value)}
+              style={styles.textarea}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>タイムスケジュール</h3>
+        <div style={{ maxHeight: 400, overflowY: 'auto', paddingRight: 6 }}>
+          {state.day.schedule.map((item, index) => (
+            <div
+              key={item.time}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '6px 0',
+                borderBottom: '1px solid #f1f5f9',
+              }}
+            >
+              <span style={{ width: 56, fontSize: 12, fontWeight: 700, color: '#94a3b8' }}>
+                {item.time}
+              </span>
+              <input
+                type="text"
+                value={item.content}
+                onChange={(e) => updateDaySchedule(index, e.target.value)}
+                style={{ ...styles.input, padding: '9px 12px', backgroundColor: '#f8fafc' }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>振り返り</h3>
+        <div style={{ display: 'grid', gap: 12 }}>
+          <input
+            type="text"
+            value={state.day.achievement}
+            onChange={(e) => updateDay('achievement', e.target.value)}
+            placeholder="達成度（◎ / ○ / △ / ×）"
+            style={styles.input}
+          />
+          <textarea
+            value={state.day.goodThings}
+            onChange={(e) => updateDay('goodThings', e.target.value)}
+            placeholder="良かったこと"
+            style={styles.textarea}
+          />
+          <textarea
+            value={state.day.redo}
+            onChange={(e) => updateDay('redo', e.target.value)}
+            placeholder="今日1日やり直せるなら"
+            style={styles.textarea}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderWeek = () => (
+    <div>
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>週間設定</h3>
+        <div style={{ display: 'grid', gap: 12 }}>
+          <input
+            type="text"
+            value={state.week.range}
+            onChange={(e) => updateWeek('range', e.target.value)}
+            style={styles.input}
+          />
+          <textarea
+            value={state.week.goal}
+            onChange={(e) => updateWeek('goal', e.target.value)}
+            placeholder="1週間の目標を設定する"
+            style={styles.textarea}
+          />
+        </div>
+      </div>
+
+      <div style={{ ...styles.section, overflowX: 'auto' }}>
+        <h3 style={styles.sectionTitle}>デイリーログ</h3>
+        <div style={{ display: 'flex', gap: 10, minWidth: 840 }}>
+          {state.week.days.map((d, idx) => (
+            <div
+              key={d.day}
+              style={{
+                flex: 1,
+                padding: 12,
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e5e7eb',
+                borderRadius: 14,
+              }}
+            >
+              <div
+                style={{
+                  textAlign: 'center',
+                  fontWeight: 800,
+                  color: '#111827',
+                  marginBottom: 10,
+                  borderBottom: '1px solid #e5e7eb',
+                  paddingBottom: 6,
+                }}
+              >
+                {d.day}
+              </div>
+
+              <div style={{ display: 'grid', gap: 8 }}>
+                <input
+                  type="text"
+                  value={d.goal}
+                  onChange={(e) => updateWeekDay(idx, 'goal', e.target.value)}
+                  placeholder="その日の目標"
+                  style={{ ...styles.input, fontSize: 12, padding: '8px 10px' }}
+                />
+                <input
+                  type="text"
+                  value={d.task}
+                  onChange={(e) => updateWeekDay(idx, 'task', e.target.value)}
+                  placeholder="最重要タスク"
+                  style={{ ...styles.input, fontSize: 12, padding: '8px 10px' }}
+                />
+                <input
+                  type="text"
+                  value={d.rating}
+                  onChange={(e) => updateWeekDay(idx, 'rating', e.target.value)}
+                  placeholder="達成度"
+                  style={{ ...styles.input, fontSize: 12, padding: '8px 10px' }}
+                />
+                <textarea
+                  value={d.memo}
+                  onChange={(e) => updateWeekDay(idx, 'memo', e.target.value)}
+                  placeholder="一言メモ"
+                  style={{ ...styles.textarea, fontSize: 12, padding: '8px 10px', minHeight: 70 }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>振り返り</h3>
+        <div style={{ display: 'grid', gap: 12 }}>
+          <textarea
+            value={state.week.goodFlow}
+            onChange={(e) => updateWeek('goodFlow', e.target.value)}
+            placeholder="良かった流れ"
+            style={styles.textarea}
+          />
+          <textarea
+            value={state.week.improvement}
+            onChange={(e) => updateWeek('improvement', e.target.value)}
+            placeholder="改善ポイント"
+            style={styles.textarea}
+          />
+          <textarea
+            value={state.week.nextAction}
+            onChange={(e) => updateWeek('nextAction', e.target.value)}
+            placeholder="来週のアクション"
+            style={styles.textarea}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderMonth = () => (
+    <div>
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>年間概況</h3>
+        <div style={{ display: 'grid', gap: 12 }}>
+          <input
+            type="text"
+            value={state.month.year}
+            onChange={(e) => updateMonth('year', e.target.value)}
+            placeholder="年"
+            style={styles.input}
+          />
+          <textarea
+            value={state.month.annualGoal}
+            onChange={(e) => updateMonth('annualGoal', e.target.value)}
+            placeholder="年間目標"
+            style={styles.textarea}
+          />
+        </div>
+      </div>
+
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>月別ログ</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+          {state.month.data.map((m, idx) => (
+            <div
+              key={m.month}
+              style={{
+                padding: 12,
+                backgroundColor: '#f8fafc',
+                borderRadius: 14,
+                border: '1px solid #e5e7eb',
+                display: 'grid',
+                gap: 6,
+              }}
+            >
+              <div style={{ textAlign: 'center', fontWeight: 800, color: '#111827' }}>{m.month}</div>
+              <input
+                type="text"
+                value={m.goal}
+                onChange={(e) => updateMonthItem(idx, 'goal', e.target.value)}
+                placeholder="月の目標"
+                style={{ ...styles.input, fontSize: 12, padding: '7px 9px' }}
+              />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  type="text"
+                  value={m.teamTarget}
+                  onChange={(e) => updateMonthItem(idx, 'teamTarget', e.target.value)}
+                  placeholder="目標"
+                  style={{ ...styles.input, fontSize: 12, padding: '7px 9px' }}
+                />
+                <input
+                  type="text"
+                  value={m.teamResult}
+                  onChange={(e) => updateMonthItem(idx, 'teamResult', e.target.value)}
+                  placeholder="結果"
+                  style={{ ...styles.input, fontSize: 12, padding: '7px 9px' }}
+                />
+              </div>
+              <input
+                type="text"
+                value={m.theme}
+                onChange={(e) => updateMonthItem(idx, 'theme', e.target.value)}
+                placeholder="テーマ"
+                style={{ ...styles.input, fontSize: 12, padding: '7px 9px' }}
+              />
+              <input
+                type="text"
+                value={m.rating}
+                onChange={(e) => updateMonthItem(idx, 'rating', e.target.value)}
+                placeholder="達成度"
+                style={{ ...styles.input, fontSize: 12, padding: '7px 9px' }}
+              />
+              <textarea
+                value={m.reflection}
+                onChange={(e) => updateMonthItem(idx, 'reflection', e.target.value)}
+                placeholder="一言振り返り"
+                style={{ ...styles.textarea, fontSize: 12, padding: '7px 9px', minHeight: 60 }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderYear = () => (
+    <div>
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>年間ビジョン</h3>
+        <div style={{ display: 'grid', gap: 12 }}>
+          <input
+            type="text"
+            value={state.year.year}
+            onChange={(e) => updateYear('year', e.target.value)}
+            placeholder="年"
+            style={styles.input}
+          />
+          <textarea
+            value={state.year.idealState}
+            onChange={(e) => updateYear('idealState', e.target.value)}
+            placeholder="どういう状態になりたいか"
+            style={styles.textarea}
+          />
+          <textarea
+            value={state.year.goal}
+            onChange={(e) => updateYear('goal', e.target.value)}
+            placeholder="年間目標"
+            style={styles.textarea}
+          />
+          <div style={{ display: 'flex', gap: 10 }}>
+            <input
+              type="text"
+              value={state.year.teamTarget}
+              onChange={(e) => updateYear('teamTarget', e.target.value)}
+              placeholder="チーム人数（目標）"
+              style={{ ...styles.input, flex: 1 }}
+            />
+            <input
+              type="text"
+              value={state.year.teamResult}
+              onChange={(e) => updateYear('teamResult', e.target.value)}
+              placeholder="チーム人数（結果）"
+              style={{ ...styles.input, flex: 1 }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>年間総括</h3>
+        <div style={{ display: 'grid', gap: 12 }}>
+          <input
+            type="text"
+            value={state.year.achievement}
+            onChange={(e) => updateYear('achievement', e.target.value)}
+            placeholder="達成度"
+            style={styles.input}
+          />
+          <textarea
+            value={state.year.goodPoints}
+            onChange={(e) => updateYear('goodPoints', e.target.value)}
+            placeholder="良かった点"
+            style={styles.textarea}
+          />
+          <textarea
+            value={state.year.improvement}
+            onChange={(e) => updateYear('improvement', e.target.value)}
+            placeholder="改善点"
+            style={styles.textarea}
+          />
+          <textarea
+            value={state.year.nextAction}
+            onChange={(e) => updateYear('nextAction', e.target.value)}
+            placeholder="来年のアクション"
+            style={styles.textarea}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderMandala = () => {
+    const gridMapping = [0, 1, 2, 7, 'center', 3, 6, 5, 4];
+    const selected = state.mandala.selectedIndex;
+
+    return (
+      <div>
+        <div style={styles.section}>
+          <h3 style={styles.sectionTitle}>マンダラチャート設定</h3>
+          <div style={{ display: 'grid', gap: 12 }}>
+            <div>
+              <label style={styles.label}>作成日</label>
+              <input
+                type="text"
+                value={state.mandala.date}
+                onChange={(e) => updateMandala('date', e.target.value)}
+                style={styles.input}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 8,
+            maxWidth: 620,
+            width: '100%',
+            margin: '0 auto 28px auto',
+          }}
+        >
+          {gridMapping.map((item) => {
+            if (item === 'center') {
+              return (
+                <div
+                  key="center"
+                  style={{
+                    backgroundColor: '#eff6ff',
+                    border: '2px solid #2563eb',
+                    borderRadius: 12,
+                    padding: 10,
+                    minHeight: 120,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <label style={{ ...styles.label, color: '#2563eb', textAlign: 'center', fontSize: 10 }}>
+                    最終目標
+                  </label>
+                  <textarea
+                    value={state.mandala.centerGoal}
+                    onChange={(e) => updateMandala('centerGoal', e.target.value)}
+                    style={{
+                      width: '100%',
+                      minHeight: 72,
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      textAlign: 'center',
+                      fontWeight: 800,
+                      fontSize: 14,
+                      resize: 'none',
+                      outline: 'none',
+                      color: '#111827',
+                    }}
+                  />
+                </div>
+              );
+            }
+
+            const sg = state.mandala.subGoals[item];
+            const isSelected = state.mandala.selectedIndex === item;
+
+            return (
+              <div
+                key={item}
+                onClick={() => updateMandala('selectedIndex', item)}
+                style={{
+                  backgroundColor: isSelected ? '#eef2ff' : '#ffffff',
+                  border: isSelected ? '2px solid #6366f1' : '1px solid #e5e7eb',
+                  borderRadius: 12,
+                  padding: 10,
+                  minHeight: 120,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 800, marginBottom: 4 }}>
+                  {CIRCLE_NUMBERS[item]}
+                </div>
+                <textarea
+                  value={sg.goal}
+                  onChange={(e) => updateMandalaGoal(item, e.target.value)}
+                  placeholder="中目標"
+                  style={{
+                    width: '100%',
+                    flex: 1,
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    fontSize: 12,
+                    resize: 'none',
+                    outline: 'none',
+                    textAlign: 'center',
+                    color: '#111827',
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        {selected !== null && (
+          <div style={{ ...styles.section, border: '2px solid #6366f1' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 14,
+              }}
+            >
+              <h3 style={{ margin: 0, fontWeight: 800, color: '#111827' }}>
+                {CIRCLE_NUMBERS[selected]} {state.mandala.subGoals[selected].goal || '（中目標未入力）'} のアクション
+              </h3>
+              <button
+                onClick={() => updateMandala('selectedIndex', null)}
+                style={{ ...styles.btnGhost, padding: '8px 12px' }}
+              >
+                閉じる
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+              {state.mandala.subGoals[selected].actions.map((action, aIdx) => (
+                <div key={aIdx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 22, fontSize: 12, color: '#94a3b8', fontWeight: 800 }}>{aIdx + 1}</span>
+                  <input
+                    type="text"
+                    value={action}
+                    onChange={(e) => updateMandalaAction(selected, aIdx, e.target.value)}
+                    placeholder="アクション"
+                    style={styles.input}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderCurrentLeft = () => {
+    switch (activeTab) {
+      case '1日':
+        return renderDay();
+      case '1週間':
+        return renderWeek();
+      case '1ヵ月':
+        return renderMonth();
+      case '1年':
+        return renderYear();
+      case 'マンダラ':
+        return renderMandala();
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div style={{ minHeight: '100vh', paddingBottom: '80px', backgroundColor: '#f8f9fa', color: '#111827', fontFamily: 'sans-serif' }}>
+    <div style={styles.page}>
       <Head>
-        <title>Goal Layer - 8-7シート</title>
+        <title>Goal Layer | 8-7シート</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <header style={{ 
-        position: 'sticky', 
-        top: 0, 
-        zIndex: 50, 
-        backgroundColor: 'rgba(255, 255, 255, 0.9)', 
-        backdropFilter: 'blur(8px)', 
-        borderBottom: '1px solid #e5e7eb', 
-        padding: '16px' 
-      }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyBetween: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '32px', height: '32px', backgroundColor: '#2563eb', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff' }}>
-              <Target size={20} />
-            </div>
-            <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>8-7シート <span style={{ color: '#2563eb', fontWeight: 'normal', fontSize: '14px' }}>Goal Layer</span></h1>
-          </div>
-          <div style={{ flex: 1 }} />
-          <button 
-            onClick={() => setShowHistory(!showHistory)} 
-            style={{ 
-              padding: '8px', 
-              backgroundColor: 'transparent', 
-              border: 'none', 
-              borderRadius: '50%', 
-              cursor: 'pointer', 
-              color: showHistory ? '#2563eb' : '#6b7280',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <History size={20} />
-          </button>
+      <header style={styles.header}>
+        <div style={{ ...styles.container, padding: 0 }}>
+          <h1 style={styles.title}>
+            8-7シート
+            <span style={styles.subtitle}>Goal Layer</span>
+          </h1>
         </div>
       </header>
 
-      <main style={{ maxWidth: '1200px', margin: '24px auto', padding: '0 16px' }}>
-        {/* Tab Navigation */}
-        <div style={{ 
-          display: 'flex', 
-          backgroundColor: '#f1f5f9', 
-          padding: '4px', 
-          borderRadius: '12px', 
-          marginBottom: '24px', 
-          maxWidth: '600px', 
-          margin: '0 auto 32px auto' 
-        }}>
-          {Object.keys(PERIOD_LABELS).map((period) => (
-            <button
-              key={period}
-              onClick={() => { setActiveTab(period); setAiResponse(null); setFormattedSummary(null); }}
-              style={{ 
-                flex: 1, 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                gap: '8px', 
-                padding: '10px 0', 
-                borderRadius: '8px', 
-                fontSize: '14px', 
-                fontWeight: '600', 
-                border: 'none', 
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                backgroundColor: activeTab === period ? '#ffffff' : 'transparent',
-                color: activeTab === period ? '#2563eb' : '#64748b',
-                boxShadow: activeTab === period ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-              }}
-            >
-              {PERIOD_ICONS[period]}
-              <span className="hidden sm-inline">{PERIOD_LABELS[period]}</span>
+      <main style={styles.container}>
+        <div style={styles.tabsWrap}>
+          {TABS.map((tab) => (
+            <button key={tab} onClick={() => setActiveTab(tab)} style={styles.tabButton(activeTab === tab)}>
+              {tab}
             </button>
           ))}
         </div>
 
-        <AnimatePresence mode="wait">
-          {!showHistory ? (
-            <motion.div 
-              key="editor" 
-              initial={{ opacity: 0, y: 10 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              exit={{ opacity: 0, y: -10 }} 
-              style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '24px', alignItems: 'flex-start' }}>
-                
-                {/* Left Side: Editor */}
-                <div style={{ flex: '1 1 600px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  
-                  {/* Goal Card */}
-                  <section style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e5e7eb', padding: '24px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                    {activeTab === 'day' && (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid #f3f4f6' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#374151', fontWeight: 'bold' }}>
-                          <Calendar size={18} color="#2563eb" /> 日付
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <input 
-                            type="text" 
-                            value={currentDisplayDate} 
-                            onChange={(e) => setCurrentDisplayDate(e.target.value)} 
-                            style={{ 
-                              fontSize: '14px', padding: '8px 12px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', width: '120px', textAlign: 'center' 
-                            }} 
-                          />
-                          <button onClick={() => setCurrentDisplayDate(getTodayDisplayDate())} style={{ padding: '8px', color: '#2563eb', border: 'none', background: 'none', cursor: 'pointer' }}><RefreshCw size={16} /></button>
-                        </div>
-                      </div>
-                    )}
-                    {activeTab === 'week' && (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid #f3f4f6' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#374151', fontWeight: 'bold' }}>
-                          <Calendar size={18} color="#2563eb" /> 期間
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <input 
-                            type="text" 
-                            value={currentWeekRange} 
-                            onChange={(e) => setCurrentWeekRange(e.target.value)} 
-                            style={{ 
-                              fontSize: '14px', padding: '8px 12px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', width: '220px', textAlign: 'center' 
-                            }} 
-                          />
-                          <button onClick={() => setCurrentWeekRange(getWeekRange())} style={{ padding: '8px', color: '#2563eb', border: 'none', background: 'none', cursor: 'pointer' }}><RefreshCw size={16} /></button>
-                        </div>
-                      </div>
-                    )}
+        <div style={styles.shellCard}>
+          <h2 style={styles.shellTitle}>{activeTab}</h2>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#374151', fontWeight: 'bold' }}>
-                      <Target size={18} color="#2563eb" /> {PERIOD_LABELS[activeTab]}の目標
-                    </div>
-                    <textarea 
-                      value={currentGoal} 
-                      onChange={(e) => setCurrentGoal(e.target.value)} 
-                      placeholder="何を達成したいですか？" 
-                      style={{ 
-                        width: '100%', minHeight: '90px', padding: '16px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '16px', fontSize: '15px', resize: 'none', boxSizing: 'border-box'
-                      }} 
-                    />
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '16px' }}>
-                      <button onClick={refineGoalWithAi} disabled={isAiLoading || !currentGoal} style={{ padding: '8px 16px', backgroundColor: '#eff6ff', color: '#2563eb', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Sparkles size={14} /> AI目標改善
-                      </button>
-                      <button onClick={decomposeGoalWithAi} disabled={isAiLoading || !currentGoal} style={{ padding: '8px 16px', backgroundColor: '#faf5ff', color: '#9333ea', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <ListTodo size={14} /> 行動に分解
-                      </button>
-                    </div>
-                  </section>
+          <div style={styles.twoCol}>
+            <div style={styles.leftCol}>{renderCurrentLeft()}</div>
 
-                  {/* Dynamic Content Section */}
-                  <section style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e5e7eb', padding: '24px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                    {activeTab === 'day' && (
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                          <h2 style={{ fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                            <Clock size={18} color="#f97316" /> タイムスケジュール
-                          </h2>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button onClick={optimizeScheduleWithAi} disabled={isAiLoading} style={{ padding: '6px', backgroundColor: '#fff7ed', color: '#ea580c', border: 'none', borderRadius: '8px', cursor: 'pointer' }}><Zap size={16} /></button>
-                            <button onClick={analyzeScheduleWithAi} disabled={isAiLoading} style={{ padding: '6px', backgroundColor: '#f0fdf4', color: '#16a34a', border: 'none', borderRadius: '8px', cursor: 'pointer' }}><BarChart3 size={16} /></button>
-                          </div>
-                        </div>
-                        <div style={{ maxHeight: '420px', overflowY: 'auto', paddingRight: '8px' }}>
-                          {currentSchedule.map((block, idx) => (
-                            <div key={block.time} style={{ display: 'grid', gridTemplateColumns: '60px 1fr 1fr 90px', gap: '8px', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
-                              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8' }}>{block.time}</div>
-                              <input 
-                                type="text" 
-                                value={block.plan} 
-                                onChange={(e) => { const n = [...currentSchedule]; n[idx].plan = e.target.value; setCurrentSchedule(n); }} 
-                                placeholder="予定" 
-                                style={{ padding: '8px', border: 'none', background: '#f9fafb', borderRadius: '6px', fontSize: '13px' }} 
-                              />
-                              <input 
-                                type="text" 
-                                value={block.actual} 
-                                onChange={(e) => { const n = [...currentSchedule]; n[idx].actual = e.target.value; setCurrentSchedule(n); }} 
-                                placeholder="実績" 
-                                style={{ padding: '8px', border: 'none', background: '#f0f9ff', borderRadius: '6px', fontSize: '13px' }} 
-                              />
-                              <div style={{ display: 'flex', gap: '2px' }}>
-                                {RATINGS.map(r => (
-                                  <button 
-                                    key={r} 
-                                    onClick={() => { const n = [...currentSchedule]; n[idx].rating = n[idx].rating === r ? '' : r; setCurrentSchedule(n); }}
-                                    style={{ 
-                                      width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', fontSize: '10px', cursor: 'pointer', border: 'none',
-                                      backgroundColor: block.rating === r ? '#2563eb' : '#eff6ff', 
-                                      color: block.rating === r ? '#ffffff' : '#2563eb'
-                                    }}
-                                  >
-                                    {r}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+            <div style={styles.rightCol}>
+              <div style={styles.section}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 12,
+                    gap: 8,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Preview & Copy</h3>
 
-                    {activeTab === 'week' && (
-                      <div style={{ overflowX: 'auto' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', minWidth: '700px' }}>
-                          {WEEKDAYS.map(d => <div key={d} style={{ textAlign: 'center', fontSize: '12px', fontWeight: 'bold', padding: '8px', backgroundColor: '#f9fafb', borderRadius: '8px', color: '#64748b' }}>{d}</div>)}
-                          {currentWeeklyDays.map((d, idx) => (
-                            <div key={idx} style={{ padding: '8px', border: '1px solid #f3f4f6', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              <textarea 
-                                value={d.goal} 
-                                onChange={(e) => updateWeeklyDay(idx, 'goal', e.target.value)} 
-                                placeholder="目標" 
-                                style={{ width: '100%', height: '60px', padding: '6px', border: 'none', background: '#f9fafb', borderRadius: '6px', fontSize: '11px', resize: 'none' }} 
-                              />
-                              <textarea 
-                                value={d.tasks} 
-                                onChange={(e) => updateWeeklyDay(idx, 'tasks', e.target.value)} 
-                                placeholder="タスク" 
-                                style={{ width: '100%', height: '60px', padding: '6px', border: 'none', background: '#f0f9ff', borderRadius: '6px', fontSize: '11px', resize: 'none' }} 
-                              />
-                              <div style={{ display: 'flex', gap: '2px', justifyContent: 'center' }}>
-                                {RATINGS.map(r => (
-                                  <button 
-                                    key={r} 
-                                    onClick={() => updateWeeklyDay(idx, 'rating', d.rating === r ? '' : r)}
-                                    style={{ 
-                                      flex: 1, padding: '4px 0', fontSize: '10px', borderRadius: '4px', cursor: 'pointer', border: 'none',
-                                      backgroundColor: d.rating === r ? '#2563eb' : '#eff6ff', 
-                                      color: d.rating === r ? '#ffffff' : '#2563eb'
-                                    }}
-                                  >
-                                    {r}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTab === 'month' && (
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                          <h2 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>12ヶ月俯瞰カレンダー</h2>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                             <input type="text" value={currentYear} onChange={e => setCurrentYear(e.target.value)} style={{ width: '60px', padding: '6px', border: '1px solid #e5e7eb', borderRadius: '8px', textAlign: 'center', fontSize: '14px' }} />
-                          </div>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
-                          {currentMonthlyData.map((m, idx) => (
-                            <div key={m.month} style={{ padding: '12px', border: '1px solid #f3f4f6', borderRadius: '16px', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#9333ea' }}>{m.month}</span>
-                                <div style={{ display: 'flex', gap: '1px' }}>
-                                  {RATINGS.map(r => <button key={r} onClick={() => updateMonthlyData(idx, 'rating', m.rating === r ? '' : r)} style={{ width: '16px', height: '16px', fontSize: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: '3px', background: m.rating === r ? '#9333ea' : '#f5f3ff', color: m.rating === r ? '#fff' : '#9333ea' }}>{r}</button>)}
-                                </div>
-                              </div>
-                              <textarea value={m.goal} onChange={e => updateMonthlyData(idx, 'goal', e.target.value)} placeholder="目標" style={{ width: '100%', height: '50px', padding: '6px', background: '#f9fafb', border: 'none', borderRadius: '6px', fontSize: '11px', resize: 'none' }} />
-                              <input value={m.theme} onChange={e => updateMonthlyData(idx, 'theme', e.target.value)} placeholder="テーマ" style={{ width: '100%', padding: '6px', border: 'none', background: '#faf5ff', borderRadius: '6px', fontSize: '11px' }} />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTab === 'year' && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                        <div style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: '12px' }}>
-                          <h2 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '4px' }}>年間ライフデザイン</h2>
-                          <p style={{ fontSize: '12px', color: '#6b7280' }}>1年後、どうありたいですか？</p>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                           <div>
-                             <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>なりたい状態 (ビジョン)</label>
-                             <textarea value={currentIdealState} onChange={e => setCurrentIdealState(e.target.value)} style={{ width: '100%', minHeight: '80px', padding: '12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '14px', resize: 'none' }} />
-                           </div>
-                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                             <div>
-                               <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>チーム/構成目標</label>
-                               <input value={currentTeamSizeTarget} onChange={e => setCurrentTeamSizeTarget(e.target.value)} style={{ width: '100%', padding: '10px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }} />
-                             </div>
-                             <div>
-                               <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>現在の実績</label>
-                               <input value={currentTeamSizeResult} onChange={e => setCurrentTeamSizeResult(e.target.value)} style={{ width: '100%', padding: '10px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }} />
-                             </div>
-                           </div>
-                           <div>
-                              <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', display: 'block', marginBottom: '6px' }}>重要KPIチャート</label>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {currentKpis.map((kpi, idx) => (
-                                  <div key={idx} style={{ display: 'flex', gap: '8px' }}>
-                                    <input value={kpi.label} onChange={e => {const n=[...currentKpis]; n[idx].label=e.target.value; setCurrentKpis(n)}} style={{ flex: 1, padding: '8px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '13px' }} />
-                                    <input value={kpi.value} onChange={e => {const n=[...currentKpis]; n[idx].value=e.target.value; setCurrentKpis(n)}} placeholder="数値" style={{ flex: 1, padding: '8px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '13px' }} />
-                                  </div>
-                                ))}
-                              </div>
-                           </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTab === 'mandala' && (
-                      <div style={{ overflowX: 'auto' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', minWidth: '800px', backgroundColor: '#f1f5f9', padding: '10px', borderRadius: '16px' }}>
-                          {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(bIdx => (
-                            <div key={bIdx} style={{ 
-                              display: 'grid', 
-                              gridTemplateColumns: 'repeat(3, 1fr)', 
-                              gap: '4px', 
-                              padding: '6px', 
-                              backgroundColor: bIdx === 4 ? '#eff6ff' : '#ffffff', 
-                              borderRadius: '10px',
-                              border: bIdx === 4 ? '1px solid #3b82f6' : '1px solid #e2e8f0'
-                            }}>
-                              {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(cIdx => {
-                                if (bIdx === 4) {
-                                  if (cIdx === 4) return <textarea key={cIdx} value={currentMandalaData.centerGoal} onChange={e => setCurrentMandalaData({...currentMandalaData, centerGoal: e.target.value})} placeholder="最終目標" style={{ width: '100%', aspectRatio: '1', padding: '4px', textAlign: 'center', fontSize: '10px', fontWeight: 'bold', border: 'none', background: '#2563eb', color: '#fff', borderRadius: '4px', resize: 'none' }} />;
-                                  const sIdx = cIdx < 4 ? cIdx : cIdx - 1;
-                                  return <textarea key={cIdx} value={currentMandalaData.subGoals[sIdx].goal} onChange={e => { const n = [...currentMandalaData.subGoals]; n[sIdx].goal = e.target.value; setCurrentMandalaData({...currentMandalaData, subGoals: n}); }} placeholder={`目標${sIdx+1}`} style={{ width: '100%', aspectRatio: '1', padding: '4px', textAlign: 'center', fontSize: '9px', fontWeight: 'bold', border: 'none', background: '#fff', color: '#1e40af', borderRadius: '4px', resize: 'none' }} />;
-                                }
-                                const sIdx = bIdx < 4 ? bIdx : bIdx - 1;
-                                if (cIdx === 4) return <div key={cIdx} style={{ width: '100%', aspectRatio: '1', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: '9px', fontWeight: 'bold', background: '#dbeafe', color: '#1e40af', borderRadius: '4px', overflow: 'hidden', lineClamp: 3 }}>{currentMandalaData.subGoals[sIdx].goal || `目標${sIdx+1}`}</div>;
-                                const aIdx = cIdx < 4 ? cIdx : cIdx - 1;
-                                return <textarea key={cIdx} value={currentMandalaData.subGoals[sIdx].actions[aIdx]} onChange={e => { const n = [...currentMandalaData.subGoals]; n[sIdx].actions[aIdx] = e.target.value; setCurrentMandalaData({...currentMandalaData, subGoals: n}); }} placeholder="行動" style={{ width: '100%', aspectRatio: '1', padding: '4px', textAlign: 'center', fontSize: '8px', border: 'none', background: '#f8fafc', color: '#334155', borderRadius: '4px', resize: 'none' }} />;
-                              })}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </section>
-
-                  {/* Reflection Card */}
-                  <section style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e5e7eb', padding: '24px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: '#374151', fontWeight: 'bold' }}>
-                      <MessageSquare size={18} color="#10b981" /> 振り返りと気づき
-                    </div>
-                    {activeTab === 'day' ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          {RATINGS.map(r => (
-                            <button 
-                              key={r} 
-                              onClick={() => setCurrentOverallRating(currentOverallRating === r ? '' : r)}
-                              style={{ 
-                                flex: 1, padding: '12px 0', border: '2px solid', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s',
-                                borderColor: currentOverallRating === r ? '#2563eb' : '#f3f4f6',
-                                backgroundColor: currentOverallRating === r ? '#2563eb' : '#ffffff',
-                                color: currentOverallRating === r ? '#ffffff' : '#94a3b8'
-                              }}
-                            >
-                              {r || 'なし'}
-                            </button>
-                          ))}
-                        </div>
-                        <textarea value={currentGoodPoints} onChange={e => setCurrentGoodPoints(e.target.value)} placeholder="今日良かったこと・成果" style={{ width: '100%', minHeight: '60px', padding: '12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '14px', resize: 'none' }} />
-                        <textarea value={currentRedoPoints} onChange={e => setCurrentRedoPoints(e.target.value)} placeholder="明日への改善点・やり直すなら" style={{ width: '100%', minHeight: '60px', padding: '12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '14px', resize: 'none' }} />
-                      </div>
-                    ) : (
-                      <textarea 
-                        value={currentReflection} 
-                        onChange={e => setCurrentReflection(e.target.value)} 
-                        placeholder="今期間の総括、マインドの変化、次のアクション..." 
-                        style={{ width: '100%', minHeight: '120px', padding: '16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '16px', fontSize: '14px', resize: 'none' }} 
-                      />
-                    )}
-                    <div style={{ marginTop: '16px' }}>
-                      <button onClick={summarizeReflectionWithAi} disabled={isAiLoading || (!currentReflection && !currentGoodPoints)} style={{ padding: '8px 16px', backgroundColor: '#ecfdf5', color: '#10b981', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Sparkles size={14} /> AIで振り返りを整理
-                      </button>
-                    </div>
-                  </section>
-
-                  {/* Actions Footer */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-                    <button 
-                      onClick={() => { if(activeTab==='day') generateDaySummary(); if(activeTab==='week') generateWeekSummary(); if(activeTab==='mandala') generateMandalaSummary(); }}
-                      disabled={isAiLoading}
-                      style={{ padding: '16px', backgroundColor: '#ffffff', border: '2px solid #2563eb', color: '#2563eb', borderRadius: '16px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                    >
-                      <FileText size={18} /> まとめ生成
+                  <div style={styles.buttonRow}>
+                    <button onClick={resetCurrentTab} style={styles.btnDanger}>
+                      リセット
                     </button>
-                    <button 
-                      onClick={handleReset}
-                      style={{ padding: '16px', backgroundColor: '#ffffff', border: '2px solid #e5e7eb', color: '#6b7280', borderRadius: '16px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                    >
-                      <RefreshCw size={18} /> クリア
+                    <button onClick={() => copyText(currentSummary)} style={styles.btnGhost}>
+                      {copied ? 'コピー完了' : 'コピー'}
                     </button>
-                    <button 
-                      onClick={handleSave}
-                      disabled={!currentGoal.trim() && activeTab !== 'day'}
-                      style={{ padding: '16px', backgroundColor: '#2563eb', border: 'none', color: '#ffffff', borderRadius: '16px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(37,99,235,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                    >
-                      <Save size={18} /> 保存する
+                    <button onClick={handleAI} style={styles.btnPrimary} disabled={aiLoading}>
+                      {aiLoading ? 'AI実行中...' : 'AIで整理'}
                     </button>
                   </div>
                 </div>
 
-                {/* Right Side: AI Results */}
-                <aside style={{ flex: '1 1 350px', display: 'flex', flexDirection: 'column', gap: '24px', position: 'sticky', top: '90px', maxHeight: 'calc(100vh - 120px)' }}>
-                  
-                  {isAiLoading && (
-                    <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e5e7eb' }}>
-                      <RefreshCw size={32} style={{ color: '#2563eb', animation: 'spin 2s linear infinite' }} />
-                      <p style={{ marginTop: '12px', fontSize: '14px', color: '#6b7280' }}>AI分析中...</p>
-                    </div>
-                  )}
-
-                  {aiResponse && !isAiLoading && (
-                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ backgroundColor: '#eff6ff', borderRadius: '20px', border: '1px solid #dbeafe', padding: '20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                        <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-                          <Sparkles size={18} /> AIアドバイス
-                        </h3>
-                        <button onClick={() => copyToClipboard(aiResponse)} style={{ padding: '6px', backgroundColor: '#ffffff', border: 'none', borderRadius: '6px', color: '#2563eb', cursor: 'pointer' }}>
-                          {copied ? <Check size={14} /> : <Copy size={14} />}
-                        </button>
-                      </div>
-                      <div style={{ fontSize: '13px', lineHeight: '1.6', color: '#1e3a8a', maxHeight: '200px', overflowY: 'auto' }}>
-                        <ReactMarkdown>{aiResponse}</ReactMarkdown>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {formattedSummary && !isAiLoading && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '2px solid #111827', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <h3 style={{ fontSize: '15px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                          <FileText size={18} /> コピー用まとめ
-                        </h3>
-                        <button 
-                          onClick={() => copyToClipboard(formattedSummary)} 
-                          style={{ 
-                            padding: '6px 12px', backgroundColor: '#111827', border: 'none', color: '#fff', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' 
-                          }}
-                        >
-                          {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? '完了' : 'コピー'}
-                        </button>
-                      </div>
-                      <pre style={{ 
-                        margin: 0, 
-                        padding: '16px', 
-                        backgroundColor: '#f9fafb', 
-                        borderRadius: '12px', 
-                        fontSize: '13px', 
-                        lineHeight: '1.5', 
-                        whiteSpace: 'pre-wrap', 
-                        maxHeight: '400px', 
-                        overflowY: 'auto',
-                        fontFamily: 'monospace',
-                        color: '#111827',
-                        border: '1px solid #e5e7eb'
-                      }}>
-                        {formattedSummary}
-                      </pre>
-                    </motion.div>
-                  )}
-
-                  {!aiResponse && !formattedSummary && !isAiLoading && (
-                    <div style={{ border: '2px dashed #e5e7eb', borderRadius: '20px', padding: '48px 24px', textAlign: 'center', color: '#94a3b8' }}>
-                      <Sparkles size={32} style={{ marginBottom: '12px', opacity: 0.3 }} />
-                      <p style={{ fontSize: '13px' }}>AIの分析結果やコピー用の<br />まとめを表示します</p>
-                    </div>
-                  )}
-                </aside>
+                <div style={styles.summaryCard}>{currentSummary}</div>
               </div>
-            </motion.div>
-          ) : (
-            <motion.div key="history" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '800px', margin: '0 auto' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <History size={24} color="#2563eb" /> {PERIOD_LABELS[activeTab]}の記録一覧
-              </h2>
-              {filteredEntries.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '80px', backgroundColor: '#ffffff', borderRadius: '24px', border: '2px dashed #e5e7eb', color: '#94a3b8' }}>
-                  記録はまだありません
+
+              <div style={styles.section}>
+                <h3 style={styles.sectionTitle}>AIコメント</h3>
+                <div
+                  style={{
+                    ...styles.summaryCard,
+                    minHeight: 220,
+                    backgroundColor: '#f8fafc',
+                  }}
+                >
+                  {aiText || 'ここにAIの整理結果が表示されます。'}
                 </div>
-              ) : (
-                filteredEntries.map(entry => (
-                  <div key={entry.id} style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e5e7eb', transition: 'all 0.2s', cursor: 'default' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 'bold', backgroundColor: '#eff6ff', padding: '2px 8px', borderRadius: '6px' }}>
-                        {entry.displayDate || entry.weekRange || new Date(entry.date).toLocaleDateString()}
-                      </span>
-                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>{new Date(entry.createdAt).toLocaleTimeString()}</span>
-                    </div>
-                    <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', margin: '4px 0 12px 0' }}>{entry.goal || "無題の目標"}</h3>
-                    <div style={{ fontSize: '14px', color: '#4b5563', lineHeight: '1.6', whiteSpace: 'pre-wrap', borderTop: '1px solid #f3f4f6', paddingTop: '12px' }}>
-                      {entry.reflection}
-                    </div>
-                  </div>
-                ))
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
 
-      <style jsx global>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        body { margin: 0; padding: 0; }
-        .card { transition: all 0.2s ease-in-out; }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        @media (max-width: 640px) {
-           .sm-inline { display: none; }
-        }
-      `}</style>
+      <footer
+        style={{
+          textAlign: 'center',
+          padding: '36px 20px',
+          color: '#94a3b8',
+          fontSize: 12,
+        }}
+      >
+        © 2026 Goal Layer. All rights reserved.
+      </footer>
     </div>
   );
 }
