@@ -1,262 +1,408 @@
-import React, { useEffect, useMemo, useState } from "react";
-import Head from "next/head";
+import React, { useEffect, useMemo, useState } from 'react';
+import Head from 'next/head';
 
-/* ===============================
-   Goal Layer / 8-7シート
-   AI機能なし版
-   スマホ最適化 / 下部にコピー欄
-================================= */
+const STORAGE_KEY = 'goal-layer-complete-v1';
+const TABS = ['1日', '1週間', '1ヵ月', '1年', 'マンダラ'];
+const WEEK_DAYS = ['月', '火', '水', '木', '金', '土', '日'];
+const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+const CIRCLE_NUMBERS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧'];
 
-const TABS = ["1日", "1週間", "1ヵ月", "1年", "マンダラ"];
-const WEEK = ["月", "火", "水", "木", "金", "土", "日"];
-const MONTHS = [
-  "1月","2月","3月","4月","5月","6月",
-  "7月","8月","9月","10月","11月","12月"
-];
-const STORAGE_KEY = "goal-layer-final-v1";
-const NUMS = ["①","②","③","④","⑤","⑥","⑦","⑧"];
-
-function today() {
+function getToday() {
   const d = new Date();
-  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`;
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function thisYear() {
+function getThisYear() {
   return String(new Date().getFullYear());
 }
 
-function weekRange() {
+function getWeekRange() {
   const now = new Date();
   const day = now.getDay();
   const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(now);
+  monday.setDate(diff);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
 
-  const mon = new Date(now);
-  mon.setDate(diff);
+  const format = (d) =>
+    `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
 
-  const sun = new Date(mon);
-  sun.setDate(mon.getDate() + 6);
-
-  const f = (d) =>
-    `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`;
-
-  return `${f(mon)}～${f(sun)}`;
+  return `${format(monday)}～${format(sunday)}`;
 }
 
-function makeSchedule() {
-  const arr = [];
-  for (let i=7;i<=23;i++) arr.push(`${String(i).padStart(2,"0")}:00`);
-  for (let i=0;i<=2;i++) arr.push(`${String(i).padStart(2,"0")}:00`);
-  return arr.map((t)=>({ time:t, content:"" }));
+function generateInitialSchedule() {
+  const hours = [];
+  for (let i = 7; i <= 23; i += 1) hours.push(`${String(i).padStart(2, '0')}:00`);
+  for (let i = 0; i <= 2; i += 1) hours.push(`${String(i).padStart(2, '0')}:00`);
+  return hours.map((time) => ({ time, content: '' }));
 }
 
-function makeWeek() {
-  return WEEK.map((d)=>({
-    day:d,
-    goal:"",
-    task:"",
-    rate:"",
-    memo:"",
+function generateInitialWeekDays() {
+  return WEEK_DAYS.map((day) => ({
+    day,
+    goal: '',
+    task: '',
+    rate: '',
+    memo: '',
   }));
 }
 
-function makeMonths() {
-  return MONTHS.map((m)=>({
-    month:m,
-    goal:"",
-    teamTarget:"",
-    teamResult:"",
-    theme:"",
-    rate:"",
-    memo:"",
+function generateInitialMonths() {
+  return MONTHS.map((month) => ({
+    month,
+    goal: '',
+    teamTarget: '',
+    teamResult: '',
+    theme: '',
+    rate: '',
+    memo: '',
   }));
 }
 
-function makeMandala() {
-  return Array.from({ length:8 },(_,i)=>({
-    id:i,
-    goal:"",
-    actions:Array(8).fill("")
+function generateInitialMandala() {
+  return Array.from({ length: 8 }, (_, i) => ({
+    id: i,
+    goal: '',
+    actions: Array(8).fill(''),
   }));
 }
 
-function initData() {
+function getInitialState() {
   return {
-    tab:"1日",
-
-    day:{
-      date:today(),
-      goal:"",
-      schedule:makeSchedule(),
-      result:"",
-      good:"",
-      redo:"",
+    tab: '1日',
+    day: {
+      date: getToday(),
+      goal: '',
+      schedule: generateInitialSchedule(),
+      result: '',
+      good: '',
+      redo: '',
     },
-
-    week:{
-      range:weekRange(),
-      goal:"",
-      days:makeWeek(),
-      good:"",
-      improve:"",
-      next:"",
+    week: {
+      range: getWeekRange(),
+      goal: '',
+      days: generateInitialWeekDays(),
+      good: '',
+      improve: '',
+      next: '',
     },
-
-    month:{
-      year:thisYear(),
-      goal:"",
-      list:makeMonths(),
+    month: {
+      year: getThisYear(),
+      goal: '',
+      list: generateInitialMonths(),
     },
-
-    year:{
-      year:thisYear(),
-      ideal:"",
-      goal:"",
-      target:"",
-      result:"",
-      score:"",
-      good:"",
-      improve:"",
-      next:"",
+    year: {
+      year: getThisYear(),
+      ideal: '',
+      goal: '',
+      target: '',
+      result: '',
+      score: '',
+      good: '',
+      improve: '',
+      next: '',
     },
-
-    mandala:{
-      date:today(),
-      center:"",
-      list:makeMandala(),
-      selected:null,
+    mandala: {
+      date: getToday(),
+      center: '',
+      list: generateInitialMandala(),
     },
   };
+}
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const check = () => setIsMobile(window.innerWidth < 900);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  return isMobile;
 }
 
 export default function Home() {
-  const [data,setData] = useState(initData());
-  const [copied,setCopied] = useState(false);
-  const [mobile,setMobile] = useState(false);
+  const isMobile = useIsMobile();
+  const [data, setData] = useState(getInitialState());
+  const [copied, setCopied] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
-  useEffect(()=>{
-    if(typeof window==="undefined") return;
-
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if(saved){
-      try{
-        setData(JSON.parse(saved));
-      }catch(e){}
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setData((prev) => ({ ...prev, ...parsed }));
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoaded(true);
     }
+  }, []);
 
-    const resize = ()=> setMobile(window.innerWidth < 900);
-    resize();
-    window.addEventListener("resize",resize);
+  useEffect(() => {
+    if (!loaded || typeof window === 'undefined') return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }, [data, loaded]);
 
-    return ()=>window.removeEventListener("resize",resize);
-  },[]);
-
-  useEffect(()=>{
-    if(typeof window==="undefined") return;
-    localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
-  },[data]);
-
-  const tab = data.tab;
-
-  const setTab = (v)=>setData(prev=>({ ...prev, tab:v }));
-
-  const copy = async(text)=>{
-    try{
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(()=>setCopied(false),1500);
-    }catch(e){}
+  const setTab = (tab) => {
+    setData((prev) => ({ ...prev, tab }));
+    setCopied(false);
+    setSaved(false);
   };
 
-  const reset = ()=>{
-    if(!confirm(`${tab}をリセットしますか？`)) return;
+  const saveNow = () => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  };
 
-    const base = initData();
+  const resetCurrentTab = () => {
+    if (typeof window !== 'undefined' && !window.confirm(`${data.tab}の入力内容をリセットしますか？`)) {
+      return;
+    }
+    const initial = getInitialState();
 
-    setData(prev=>{
-      if(tab==="1日") return { ...prev, day:base.day };
-      if(tab==="1週間") return { ...prev, week:base.week };
-      if(tab==="1ヵ月") return { ...prev, month:base.month };
-      if(tab==="1年") return { ...prev, year:base.year };
-      return { ...prev, mandala:base.mandala };
+    setData((prev) => {
+      if (prev.tab === '1日') return { ...prev, day: initial.day };
+      if (prev.tab === '1週間') return { ...prev, week: initial.week };
+      if (prev.tab === '1ヵ月') return { ...prev, month: initial.month };
+      if (prev.tab === '1年') return { ...prev, year: initial.year };
+      return { ...prev, mandala: initial.mandala };
+    });
+
+    setCopied(false);
+    setSaved(false);
+  };
+
+  const copySummary = async (text) => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const setTodayToDay = () => {
+    setData((prev) => ({ ...prev, day: { ...prev.day, date: getToday() } }));
+  };
+
+  const setCurrentWeek = () => {
+    setData((prev) => ({ ...prev, week: { ...prev.week, range: getWeekRange() } }));
+  };
+
+  const setCurrentYearToMonth = () => {
+    setData((prev) => ({ ...prev, month: { ...prev.month, year: getThisYear() } }));
+  };
+
+  const setCurrentYearToYear = () => {
+    setData((prev) => ({ ...prev, year: { ...prev.year, year: getThisYear() } }));
+  };
+
+  const setTodayToMandala = () => {
+    setData((prev) => ({ ...prev, mandala: { ...prev.mandala, date: getToday() } }));
+  };
+
+  const updateDayField = (field, value) => {
+    setData((prev) => ({
+      ...prev,
+      day: { ...prev.day, [field]: value },
+    }));
+  };
+
+  const updateDaySchedule = (index, value) => {
+    setData((prev) => {
+      const next = [...prev.day.schedule];
+      next[index] = { ...next[index], content: value };
+      return {
+        ...prev,
+        day: { ...prev.day, schedule: next },
+      };
     });
   };
 
-  /* =========================
-      SUMMARY
-  ========================= */
+  const updateWeekField = (field, value) => {
+    setData((prev) => ({
+      ...prev,
+      week: { ...prev.week, [field]: value },
+    }));
+  };
 
-  const summary = useMemo(()=>{
+  const updateWeekDay = (index, field, value) => {
+    setData((prev) => {
+      const next = [...prev.week.days];
+      next[index] = { ...next[index], [field]: value };
+      return {
+        ...prev,
+        week: { ...prev.week, days: next },
+      };
+    });
+  };
 
-    if(tab==="1日"){
-      const sch = data.day.schedule
-        .filter(v=>v.content.trim())
-        .map(v=>`${v.time} ${v.content}`)
-        .join("\n");
+  const updateMonthField = (field, value) => {
+    setData((prev) => ({
+      ...prev,
+      month: { ...prev.month, [field]: value },
+    }));
+  };
 
-      return `■日付
+  const updateMonthItem = (index, field, value) => {
+    setData((prev) => {
+      const next = [...prev.month.list];
+      next[index] = { ...next[index], [field]: value };
+      return {
+        ...prev,
+        month: { ...prev.month, list: next },
+      };
+    });
+  };
+
+  const updateYearField = (field, value) => {
+    setData((prev) => ({
+      ...prev,
+      year: { ...prev.year, [field]: value },
+    }));
+  };
+
+  const updateMandalaField = (field, value) => {
+    setData((prev) => ({
+      ...prev,
+      mandala: { ...prev.mandala, [field]: value },
+    }));
+  };
+
+  const updateMandalaGoal = (index, value) => {
+    setData((prev) => {
+      const next = [...prev.mandala.list];
+      next[index] = { ...next[index], goal: value };
+      return {
+        ...prev,
+        mandala: { ...prev.mandala, list: next },
+      };
+    });
+  };
+
+  const updateMandalaAction = (goalIndex, actionIndex, value) => {
+    setData((prev) => {
+      const next = [...prev.mandala.list];
+      const actions = [...next[goalIndex].actions];
+      actions[actionIndex] = value;
+      next[goalIndex] = { ...next[goalIndex], actions };
+      return {
+        ...prev,
+        mandala: { ...prev.mandala, list: next },
+      };
+    });
+  };
+
+  const daySummary = useMemo(() => {
+    const scheduleText = data.day.schedule
+      .filter((v) => v.content.trim() !== '')
+      .map((v) => `${v.time} ${v.content}`)
+      .join('\n');
+
+    return `■日付
 ${data.day.date}
 
 ■1日の目標
 ${data.day.goal}
 
 ■タイムスケジュール
-${sch}
+${scheduleText}
 
 ■振り返り
-達成度：${data.day.result}
+【達成度】
+${data.day.result}
 
-良かったこと
+【良かったこと】
 ${data.day.good}
 
-やり直せるなら
+【今日1日やり直せるなら】
 ${data.day.redo}`;
-    }
+  }, [data.day]);
 
-    if(tab==="1週間"){
-      const logs = data.week.days.map(v=>`【${v.day}】
-目標:${v.goal}
-タスク:${v.task}
-達成度:${v.rate}
-メモ:${v.memo}`).join("\n\n");
+  const weekSummary = useMemo(() => {
+    const dailyText = data.week.days
+      .map(
+        (v) => `【${v.day}】
+・目標：${v.goal}
+・最重要タスク：${v.task}
+・達成度：${v.rate}
+・メモ：${v.memo}`
+      )
+      .join('\n\n');
 
-      return `■期間
+    const rateText = data.week.days.map((v) => `${v.day}：${v.rate}`).join('\n');
+
+    return `■期間
 ${data.week.range}
 
-■週間目標
+■今週の目標
 ${data.week.goal}
 
-■デイリーログ
-${logs}
+■週間サマリー
 
-■良かった流れ
+【達成状況】
+${rateText}
+
+【良かった流れ】
 ${data.week.good}
 
-■改善点
+【改善ポイント】
 ${data.week.improve}
 
-■来週の行動
-${data.week.next}`;
-    }
+【来週のアクション】
+${data.week.next}
 
-    if(tab==="1ヵ月"){
-      const txt = data.month.list.map(v=>`【${v.month}】
-目標:${v.goal}
-人数 目標:${v.teamTarget} 結果:${v.teamResult}
-テーマ:${v.theme}
-達成:${v.rate}
-振り返り:${v.memo}`).join("\n\n");
+■デイリーログ
 
-      return `■年
+${dailyText}`;
+  }, [data.week]);
+
+  const monthSummary = useMemo(() => {
+    const text = data.month.list
+      .map(
+        (v) => `【${v.month}】
+・目標：${v.goal}
+・チーム人数：目標 ${v.teamTarget} / 結果 ${v.teamResult}
+・テーマ：${v.theme}
+・達成度：${v.rate}
+・振り返り：${v.memo}`
+      )
+      .join('\n\n');
+
+    return `■年
 ${data.month.year}
 
 ■年間目標
 ${data.month.goal}
 
-${txt}`;
-    }
+■年間サマリー
 
-    if(tab==="1年"){
-      return `■年
+${text}`;
+  }, [data.month]);
+
+  const yearSummary = useMemo(() => {
+    return `■年
 ${data.year.year}
 
 ■なりたい状態
@@ -265,24 +411,40 @@ ${data.year.ideal}
 ■年間目標
 ${data.year.goal}
 
-■人数
-目標:${data.year.target}
-結果:${data.year.result}
+■チーム人数
+目標：${data.year.target}
+結果：${data.year.result}
 
-■達成度
+■総括
+
+【達成度】
 ${data.year.score}
 
-■良かった点
+【良かった点】
 ${data.year.good}
 
-■改善点
+【改善点】
 ${data.year.improve}
 
-■来年行動
+【来年のアクション】
 ${data.year.next}`;
-    }
+  }, [data.year]);
 
-    const txt = data.mandala.list.map((v,i)=>`${NUMS[i]} ${v.goal}`).join("\n");
+  const mandalaSummary = useMemo(() => {
+    const goals = data.mandala.list
+      .map((v, i) => `${CIRCLE_NUMBERS[i]} ${v.goal}`)
+      .join('\n');
+
+    const actions = data.mandala.list
+      .map((v, i) => {
+        const actionText = v.actions
+          .filter((a) => a.trim() !== '')
+          .map((a) => `・${a}`)
+          .join('\n');
+        return `【${CIRCLE_NUMBERS[i]} ${v.goal}】
+${actionText || '（未入力）'}`;
+      })
+      .join('\n\n');
 
     return `■作成日
 ${data.mandala.date}
@@ -291,560 +453,788 @@ ${data.mandala.date}
 ${data.mandala.center}
 
 ■中目標
-${txt}`;
-  },[data,tab]);
+${goals}
 
-  /* =========================
-      UI STYLE
-  ========================= */
+■行動プラン
+
+${actions}`;
+  }, [data.mandala]);
+
+  const currentSummary = useMemo(() => {
+    if (data.tab === '1日') return daySummary;
+    if (data.tab === '1週間') return weekSummary;
+    if (data.tab === '1ヵ月') return monthSummary;
+    if (data.tab === '1年') return yearSummary;
+    return mandalaSummary;
+  }, [data.tab, daySummary, weekSummary, monthSummary, yearSummary, mandalaSummary]);
 
   const card = {
-    background:"#ffffff",
-    border:"1px solid #e5e7eb",
-    borderRadius:20,
-    padding:mobile ? 14 : 22,
-    boxShadow:"0 10px 30px rgba(0,0,0,0.05)",
-    marginBottom:16
+    background: '#ffffff',
+    border: '1px solid #e5e7eb',
+    borderRadius: isMobile ? 16 : 22,
+    padding: isMobile ? 14 : 22,
+    boxShadow: '0 10px 30px rgba(15, 23, 42, 0.05)',
+    marginBottom: 16,
   };
 
   const input = {
-    width:"100%",
-    padding:"12px",
-    border:"1px solid #d1d5db",
-    borderRadius:12,
-    background:"#fff",
-    fontSize:14,
-    outline:"none",
-    boxSizing:"border-box"
+    width: '100%',
+    padding: isMobile ? '11px 12px' : '12px 14px',
+    border: '1px solid #d1d5db',
+    borderRadius: 12,
+    background: '#ffffff',
+    fontSize: isMobile ? 13 : 14,
+    outline: 'none',
+    boxSizing: 'border-box',
   };
 
   const textarea = {
     ...input,
-    minHeight:90,
-    resize:"vertical"
+    minHeight: 90,
+    resize: 'vertical',
   };
 
-  /* =========================
-      CONTENT
-  ========================= */
+  const buttonBase = {
+    border: 'none',
+    borderRadius: 12,
+    padding: isMobile ? '12px 12px' : '12px 16px',
+    fontWeight: 800,
+    cursor: 'pointer',
+  };
 
-  const renderContent = ()=>{
+  const renderDay = () => (
+    <>
+      <div style={card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 10 }}>
+          <h3 style={{ margin: 0 }}>基本情報</h3>
+          <button onClick={setTodayToDay} style={{ ...buttonBase, background: '#eff6ff', color: '#2563eb' }}>
+            今日の日付を入れる
+          </button>
+        </div>
 
-    if(tab==="1日"){
-      return (
-        <>
-          <div style={card}>
-            <h3>基本情報</h3>
-            <input style={input}
-              value={data.day.date}
-              onChange={e=>setData({
-                ...data,
-                day:{ ...data.day, date:e.target.value }
-              })}
-            />
-            <div style={{ height:10 }} />
-            <textarea style={textarea}
-              placeholder="1日の目標"
-              value={data.day.goal}
-              onChange={e=>setData({
-                ...data,
-                day:{ ...data.day, goal:e.target.value }
-              })}
-            />
-          </div>
+        <div style={{ height: 12 }} />
 
-          <div style={card}>
-            <h3>タイムスケジュール</h3>
+        <label style={{ fontSize: 12, color: '#64748b', fontWeight: 700 }}>日付</label>
+        <div style={{ height: 6 }} />
+        <input
+          style={input}
+          value={data.day.date}
+          onChange={(e) => updateDayField('date', e.target.value)}
+        />
 
-            <div style={{ maxHeight:360, overflowY:"auto" }}>
-              {data.day.schedule.map((v,i)=>(
-                <div key={i}
-                  style={{
-                    display:"flex",
-                    gap:8,
-                    marginBottom:8
-                  }}>
-                  <div style={{
-                    width:58,
-                    fontSize:12,
-                    fontWeight:"bold",
-                    color:"#64748b",
-                    paddingTop:12
-                  }}>
-                    {v.time}
-                  </div>
+        <div style={{ height: 12 }} />
 
-                  <input
-                    style={input}
-                    value={v.content}
-                    onChange={e=>{
-                      const next=[...data.day.schedule];
-                      next[i].content=e.target.value;
-                      setData({
-                        ...data,
-                        day:{ ...data.day, schedule:next }
-                      });
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
+        <label style={{ fontSize: 12, color: '#64748b', fontWeight: 700 }}>1日の目標を設定する</label>
+        <div style={{ height: 6 }} />
+        <textarea
+          style={textarea}
+          value={data.day.goal}
+          onChange={(e) => updateDayField('goal', e.target.value)}
+        />
+      </div>
 
-          <div style={card}>
-            <h3>振り返り</h3>
-
-            <input style={input}
-              placeholder="達成度"
-              value={data.day.result}
-              onChange={e=>setData({
-                ...data,
-                day:{ ...data.day, result:e.target.value }
-              })}
-            />
-
-            <div style={{ height:10 }} />
-
-            <textarea style={textarea}
-              placeholder="良かったこと"
-              value={data.day.good}
-              onChange={e=>setData({
-                ...data,
-                day:{ ...data.day, good:e.target.value }
-              })}
-            />
-
-            <div style={{ height:10 }} />
-
-            <textarea style={textarea}
-              placeholder="やり直せるなら"
-              value={data.day.redo}
-              onChange={e=>setData({
-                ...data,
-                day:{ ...data.day, redo:e.target.value }
-              })}
-            />
-          </div>
-        </>
-      );
-    }
-
-    if(tab==="1週間"){
-      return (
-        <>
-          <div style={card}>
-            <h3>週間設定</h3>
-
-            <input style={input}
-              value={data.week.range}
-              onChange={e=>setData({
-                ...data,
-                week:{ ...data.week, range:e.target.value }
-              })}
-            />
-
-            <div style={{ height:10 }} />
-
-            <textarea style={textarea}
-              placeholder="週間目標"
-              value={data.week.goal}
-              onChange={e=>setData({
-                ...data,
-                week:{ ...data.week, goal:e.target.value }
-              })}
-            />
-          </div>
-
-          <div style={card}>
-            <h3>デイリーログ</h3>
-
-            <div style={{
-              overflowX:"auto",
-              display:"flex",
-              gap:10
-            }}>
-              {data.week.days.map((v,i)=>(
-                <div key={i}
-                  style={{
-                    minWidth:170,
-                    background:"#f8fafc",
-                    border:"1px solid #e5e7eb",
-                    borderRadius:16,
-                    padding:10
-                  }}>
-                  <b>{v.day}</b>
-
-                  <div style={{ height:8 }} />
-
-                  <input style={input}
-                    placeholder="目標"
-                    value={v.goal}
-                    onChange={e=>{
-                      const next=[...data.week.days];
-                      next[i].goal=e.target.value;
-                      setData({
-                        ...data,
-                        week:{ ...data.week, days:next }
-                      });
-                    }}
-                  />
-
-                  <div style={{ height:8 }} />
-
-                  <input style={input}
-                    placeholder="タスク"
-                    value={v.task}
-                    onChange={e=>{
-                      const next=[...data.week.days];
-                      next[i].task=e.target.value;
-                      setData({
-                        ...data,
-                        week:{ ...data.week, days:next }
-                      });
-                    }}
-                  />
-
-                  <div style={{ height:8 }} />
-
-                  <input style={input}
-                    placeholder="達成度"
-                    value={v.rate}
-                    onChange={e=>{
-                      const next=[...data.week.days];
-                      next[i].rate=e.target.value;
-                      setData({
-                        ...data,
-                        week:{ ...data.week, days:next }
-                      });
-                    }}
-                  />
-
-                  <div style={{ height:8 }} />
-
-                  <textarea style={textarea}
-                    placeholder="メモ"
-                    value={v.memo}
-                    onChange={e=>{
-                      const next=[...data.week.days];
-                      next[i].memo=e.target.value;
-                      setData({
-                        ...data,
-                        week:{ ...data.week, days:next }
-                      });
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      );
-    }
-
-    if(tab==="1ヵ月"){
-      return (
-        <div style={card}>
-          <h3>月別管理</h3>
-
-          <div style={{
-            display:"grid",
-            gridTemplateColumns: mobile ? "1fr" : "1fr 1fr 1fr",
-            gap:12
-          }}>
-            {data.month.list.map((v,i)=>(
-              <div key={i}
+      <div style={card}>
+        <h3 style={{ marginTop: 0 }}>タイムスケジュール</h3>
+        <div style={{ maxHeight: isMobile ? 300 : 400, overflowY: 'auto', paddingRight: 4 }}>
+          {data.day.schedule.map((v, i) => (
+            <div
+              key={v.time}
+              style={{
+                display: 'flex',
+                gap: 8,
+                marginBottom: 8,
+                alignItems: 'center',
+              }}
+            >
+              <div
                 style={{
-                  background:"#f8fafc",
-                  borderRadius:16,
-                  padding:12,
-                  border:"1px solid #e5e7eb"
-                }}>
-                <b>{v.month}</b>
+                  width: isMobile ? 48 : 58,
+                  fontSize: isMobile ? 11 : 12,
+                  fontWeight: 800,
+                  color: '#64748b',
+                  flexShrink: 0,
+                }}
+              >
+                {v.time}
+              </div>
 
-                <div style={{ height:8 }} />
+              <input
+                style={input}
+                value={v.content}
+                onChange={(e) => updateDaySchedule(i, e.target.value)}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
 
-                <input style={input}
+      <div style={card}>
+        <h3 style={{ marginTop: 0 }}>振り返り</h3>
+
+        <input
+          style={input}
+          placeholder="達成度"
+          value={data.day.result}
+          onChange={(e) => updateDayField('result', e.target.value)}
+        />
+
+        <div style={{ height: 10 }} />
+
+        <textarea
+          style={textarea}
+          placeholder="良かったこと"
+          value={data.day.good}
+          onChange={(e) => updateDayField('good', e.target.value)}
+        />
+
+        <div style={{ height: 10 }} />
+
+        <textarea
+          style={textarea}
+          placeholder="今日1日やり直せるなら"
+          value={data.day.redo}
+          onChange={(e) => updateDayField('redo', e.target.value)}
+        />
+      </div>
+    </>
+  );
+
+  const renderWeek = () => (
+    <>
+      <div style={card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 10 }}>
+          <h3 style={{ margin: 0 }}>週間設定</h3>
+          <button onClick={setCurrentWeek} style={{ ...buttonBase, background: '#eff6ff', color: '#2563eb' }}>
+            今週を自動入力
+          </button>
+        </div>
+
+        <div style={{ height: 12 }} />
+
+        <input
+          style={input}
+          value={data.week.range}
+          onChange={(e) => updateWeekField('range', e.target.value)}
+        />
+
+        <div style={{ height: 10 }} />
+
+        <textarea
+          style={textarea}
+          placeholder="1週間の目標を設定する"
+          value={data.week.goal}
+          onChange={(e) => updateWeekField('goal', e.target.value)}
+        />
+      </div>
+
+      <div style={card}>
+        <h3 style={{ marginTop: 0 }}>デイリーログ</h3>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <div style={{ display: 'flex', gap: 10, minWidth: isMobile ? 720 : 860 }}>
+            {data.week.days.map((v, i) => (
+              <div
+                key={v.day}
+                style={{
+                  minWidth: isMobile ? 160 : 0,
+                  flex: 1,
+                  background: '#f8fafc',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 16,
+                  padding: 12,
+                }}
+              >
+                <div style={{ fontWeight: 900, marginBottom: 8, textAlign: 'center' }}>{v.day}</div>
+
+                <input
+                  style={input}
                   placeholder="目標"
                   value={v.goal}
-                  onChange={e=>{
-                    const next=[...data.month.list];
-                    next[i].goal=e.target.value;
-                    setData({
-                      ...data,
-                      month:{ ...data.month, list:next }
-                    });
-                  }}
+                  onChange={(e) => updateWeekDay(i, 'goal', e.target.value)}
+                />
+
+                <div style={{ height: 8 }} />
+
+                <input
+                  style={input}
+                  placeholder="最重要タスク"
+                  value={v.task}
+                  onChange={(e) => updateWeekDay(i, 'task', e.target.value)}
+                />
+
+                <div style={{ height: 8 }} />
+
+                <input
+                  style={input}
+                  placeholder="達成度"
+                  value={v.rate}
+                  onChange={(e) => updateWeekDay(i, 'rate', e.target.value)}
+                />
+
+                <div style={{ height: 8 }} />
+
+                <textarea
+                  style={textarea}
+                  placeholder="メモ"
+                  value={v.memo}
+                  onChange={(e) => updateWeekDay(i, 'memo', e.target.value)}
                 />
               </div>
             ))}
           </div>
         </div>
-      );
-    }
+      </div>
 
-    if(tab==="1年"){
-      return (
-        <div style={card}>
-          <h3>1年管理</h3>
+      <div style={card}>
+        <h3 style={{ marginTop: 0 }}>週間振り返り</h3>
 
-          <textarea style={textarea}
-            placeholder="なりたい状態"
-            value={data.year.ideal}
-            onChange={e=>setData({
-              ...data,
-              year:{ ...data.year, ideal:e.target.value }
-            })}
+        <textarea
+          style={textarea}
+          placeholder="良かった流れ"
+          value={data.week.good}
+          onChange={(e) => updateWeekField('good', e.target.value)}
+        />
+
+        <div style={{ height: 10 }} />
+
+        <textarea
+          style={textarea}
+          placeholder="改善ポイント"
+          value={data.week.improve}
+          onChange={(e) => updateWeekField('improve', e.target.value)}
+        />
+
+        <div style={{ height: 10 }} />
+
+        <textarea
+          style={textarea}
+          placeholder="来週のアクション"
+          value={data.week.next}
+          onChange={(e) => updateWeekField('next', e.target.value)}
+        />
+      </div>
+    </>
+  );
+
+  const renderMonth = () => (
+    <>
+      <div style={card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 10 }}>
+          <h3 style={{ margin: 0 }}>年間設定</h3>
+          <button onClick={setCurrentYearToMonth} style={{ ...buttonBase, background: '#eff6ff', color: '#2563eb' }}>
+            今年を自動入力
+          </button>
+        </div>
+
+        <div style={{ height: 12 }} />
+
+        <input
+          style={input}
+          value={data.month.year}
+          onChange={(e) => updateMonthField('year', e.target.value)}
+          placeholder="年"
+        />
+
+        <div style={{ height: 10 }} />
+
+        <textarea
+          style={textarea}
+          placeholder="年間目標"
+          value={data.month.goal}
+          onChange={(e) => updateMonthField('goal', e.target.value)}
+        />
+      </div>
+
+      <div style={card}>
+        <h3 style={{ marginTop: 0 }}>1月〜12月</h3>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+            gap: 12,
+          }}
+        >
+          {data.month.list.map((v, i) => (
+            <div
+              key={v.month}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e5e7eb',
+                borderRadius: 16,
+                padding: 12,
+              }}
+            >
+              <div style={{ fontWeight: 900, marginBottom: 8 }}>{v.month}</div>
+
+              <input
+                style={input}
+                placeholder="月の目標"
+                value={v.goal}
+                onChange={(e) => updateMonthItem(i, 'goal', e.target.value)}
+              />
+
+              <div style={{ height: 8 }} />
+
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
+                <input
+                  style={input}
+                  placeholder="人数 目標"
+                  value={v.teamTarget}
+                  onChange={(e) => updateMonthItem(i, 'teamTarget', e.target.value)}
+                />
+                <input
+                  style={input}
+                  placeholder="人数 結果"
+                  value={v.teamResult}
+                  onChange={(e) => updateMonthItem(i, 'teamResult', e.target.value)}
+                />
+              </div>
+
+              <div style={{ height: 8 }} />
+
+              <input
+                style={input}
+                placeholder="テーマ"
+                value={v.theme}
+                onChange={(e) => updateMonthItem(i, 'theme', e.target.value)}
+              />
+
+              <div style={{ height: 8 }} />
+
+              <input
+                style={input}
+                placeholder="達成度"
+                value={v.rate}
+                onChange={(e) => updateMonthItem(i, 'rate', e.target.value)}
+              />
+
+              <div style={{ height: 8 }} />
+
+              <textarea
+                style={textarea}
+                placeholder="一言振り返り"
+                value={v.memo}
+                onChange={(e) => updateMonthItem(i, 'memo', e.target.value)}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+
+  const renderYear = () => (
+    <>
+      <div style={card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 10 }}>
+          <h3 style={{ margin: 0 }}>1年の設計</h3>
+          <button onClick={setCurrentYearToYear} style={{ ...buttonBase, background: '#eff6ff', color: '#2563eb' }}>
+            今年を自動入力
+          </button>
+        </div>
+
+        <div style={{ height: 12 }} />
+
+        <input
+          style={input}
+          value={data.year.year}
+          onChange={(e) => updateYearField('year', e.target.value)}
+          placeholder="年"
+        />
+
+        <div style={{ height: 10 }} />
+
+        <textarea
+          style={textarea}
+          placeholder="どういう状態になりたいか"
+          value={data.year.ideal}
+          onChange={(e) => updateYearField('ideal', e.target.value)}
+        />
+
+        <div style={{ height: 10 }} />
+
+        <textarea
+          style={textarea}
+          placeholder="年間目標"
+          value={data.year.goal}
+          onChange={(e) => updateYearField('goal', e.target.value)}
+        />
+
+        <div style={{ height: 10 }} />
+
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
+          <input
+            style={input}
+            placeholder="チーム人数（目標）"
+            value={data.year.target}
+            onChange={(e) => updateYearField('target', e.target.value)}
           />
-
-          <div style={{ height:10 }} />
-
-          <textarea style={textarea}
-            placeholder="年間目標"
-            value={data.year.goal}
-            onChange={e=>setData({
-              ...data,
-              year:{ ...data.year, goal:e.target.value }
-            })}
+          <input
+            style={input}
+            placeholder="チーム人数（結果）"
+            value={data.year.result}
+            onChange={(e) => updateYearField('result', e.target.value)}
           />
         </div>
+      </div>
+
+      <div style={card}>
+        <h3 style={{ marginTop: 0 }}>総括</h3>
+
+        <input
+          style={input}
+          placeholder="達成度"
+          value={data.year.score}
+          onChange={(e) => updateYearField('score', e.target.value)}
+        />
+
+        <div style={{ height: 10 }} />
+
+        <textarea
+          style={textarea}
+          placeholder="良かった点"
+          value={data.year.good}
+          onChange={(e) => updateYearField('good', e.target.value)}
+        />
+
+        <div style={{ height: 10 }} />
+
+        <textarea
+          style={textarea}
+          placeholder="改善点"
+          value={data.year.improve}
+          onChange={(e) => updateYearField('improve', e.target.value)}
+        />
+
+        <div style={{ height: 10 }} />
+
+        <textarea
+          style={textarea}
+          placeholder="来年のアクション"
+          value={data.year.next}
+          onChange={(e) => updateYearField('next', e.target.value)}
+        />
+      </div>
+    </>
+  );
+
+  const renderMandala = () => {
+    const blockOrder = [
+      [0, 1, 2],
+      [7, 'center', 3],
+      [6, 5, 4],
+    ];
+
+    const miniCellStyle = (highlight) => ({
+      background: highlight ? '#dbeafe' : '#ffffff',
+      border: highlight ? '2px solid #2563eb' : '1px solid #e5e7eb',
+      borderRadius: 10,
+      minHeight: isMobile ? 54 : 64,
+      padding: 6,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      textAlign: 'center',
+      fontSize: isMobile ? 10 : 11,
+      fontWeight: highlight ? 800 : 600,
+      color: '#111827',
+      boxSizing: 'border-box',
+      overflow: 'hidden',
+      wordBreak: 'break-word',
+    });
+
+    const renderMiniGrid = (item, index) => {
+      if (item === 'center') {
+        return (
+          <div
+            key={`center-${index}`}
+            style={{
+              ...miniCellStyle(true),
+              minHeight: isMobile ? 110 : 140,
+              gridColumn: isMobile ? '1 / -1' : 'auto',
+            }}
+          >
+            <div style={{ width: '100%' }}>
+              <div style={{ fontSize: 10, color: '#2563eb', marginBottom: 4 }}>最終目標</div>
+              <textarea
+                value={data.mandala.center}
+                onChange={(e) => updateMandalaField('center', e.target.value)}
+                placeholder="最終目標"
+                style={{
+                  width: '100%',
+                  minHeight: isMobile ? 60 : 80,
+                  border: 'none',
+                  background: 'transparent',
+                  resize: 'none',
+                  outline: 'none',
+                  textAlign: 'center',
+                  fontWeight: 900,
+                  fontSize: isMobile ? 13 : 14,
+                  color: '#111827',
+                }}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      const goal = data.mandala.list[item];
+
+      return (
+        <div
+          key={item}
+          style={{
+            background: '#ffffff',
+            border: '1px solid #dbe4f0',
+            borderRadius: 18,
+            padding: 8,
+            boxShadow: '0 8px 20px rgba(37, 99, 235, 0.04)',
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 900, color: '#2563eb', marginBottom: 6 }}>
+            {NUMS[item]}
+          </div>
+
+          <textarea
+            value={goal.goal}
+            onChange={(e) => updateMandalaGoal(item, e.target.value)}
+            placeholder="中目標"
+            style={{
+              width: '100%',
+              minHeight: 52,
+              border: '1px solid #e5e7eb',
+              borderRadius: 10,
+              padding: 8,
+              marginBottom: 8,
+              resize: 'none',
+              outline: 'none',
+              fontWeight: 700,
+              boxSizing: 'border-box',
+            }}
+          />
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+            {[
+              goal.actions[0],
+              goal.actions[1],
+              goal.actions[2],
+              goal.actions[7],
+              goal.goal || '中目標',
+              goal.actions[3],
+              goal.actions[6],
+              goal.actions[5],
+              goal.actions[4],
+            ].map((text, idx) => (
+              <div key={idx} style={miniCellStyle(idx === 4)}>
+                {text || (idx === 4 ? '中目標' : '')}
+              </div>
+            ))}
+          </div>
+
+          <div style={{ height: 10 }} />
+
+          <div style={{ display: 'grid', gap: 6 }}>
+            {goal.actions.map((action, actionIndex) => (
+              <input
+                key={actionIndex}
+                style={input}
+                placeholder={`アクション${actionIndex + 1}`}
+                value={action}
+                onChange={(e) => updateMandalaAction(item, actionIndex, e.target.value)}
+              />
+            ))}
+          </div>
+        </div>
       );
-    }
+    };
 
     return (
       <>
         <div style={card}>
-          <h3>マンダラチャート</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 10 }}>
+            <h3 style={{ margin: 0 }}>マンダラ設定</h3>
+            <button onClick={setTodayToMandala} style={{ ...buttonBase, background: '#eff6ff', color: '#2563eb' }}>
+              今日の日付を入れる
+            </button>
+          </div>
 
-          <input style={input}
-            placeholder="最終目標"
-            value={data.mandala.center}
-            onChange={e=>setData({
-              ...data,
-              mandala:{ ...data.mandala, center:e.target.value }
-            })}
+          <div style={{ height: 12 }} />
+
+          <input
+            style={input}
+            value={data.mandala.date}
+            onChange={(e) => updateMandalaField('date', e.target.value)}
+            placeholder="作成日"
           />
+        </div>
 
-          <div style={{ height:14 }} />
+        <div style={card}>
+          <h3 style={{ marginTop: 0 }}>9×9 マンダラチャート</h3>
 
-          <div style={{
-            display:"grid",
-            gridTemplateColumns:"1fr 1fr",
-            gap:10
-          }}>
-            {data.mandala.list.map((v,i)=>(
-              <textarea
-                key={i}
-                style={textarea}
-                placeholder={`${NUMS[i]} 中目標`}
-                value={v.goal}
-                onChange={e=>{
-                  const next=[...data.mandala.list];
-                  next[i].goal=e.target.value;
-                  setData({
-                    ...data,
-                    mandala:{ ...data.mandala, list:next }
-                  });
-                }}
-              />
-            ))}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+              gap: 12,
+            }}
+          >
+            {blockOrder.flat().map((item, index) => renderMiniGrid(item, index))}
           </div>
         </div>
       </>
     );
   };
 
-  return (
-    <div style={{
-      minHeight:"100vh",
-      background:"linear-gradient(180deg,#eff6ff,#f8fafc,#ffffff)",
-      paddingBottom:100,
-      fontFamily:"sans-serif"
-    }}>
-      <Head>
-        <title>Goal Layer | 8-7シート</title>
-      </Head>
+  const renderLeft = () => {
+    if (data.tab === '1日') return renderDay();
+    if (data.tab === '1週間') return renderWeek();
+    if (data.tab === '1ヵ月') return renderMonth();
+    if (data.tab === '1年') return renderYear();
+    return renderMandala();
+  };
 
-      <div style={{
-        position:"sticky",
-        top:0,
-        zIndex:10,
-        backdropFilter:"blur(10px)",
-        background:"rgba(255,255,255,0.8)",
-        borderBottom:"1px solid #e5e7eb",
-        padding:"16px"
-      }}>
-        <h1 style={{
-          margin:0,
-          fontSize:24,
-          fontWeight:900
-        }}>
-          8-7シート
-          <span style={{
-            color:"#2563eb",
-            fontSize:12,
-            marginLeft:8
-          }}>
-            Goal Layer
-          </span>
-        </h1>
+  const previewArea = (
+    <div style={card}>
+      <h3 style={{ marginTop: 0 }}>Preview & Copy</h3>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr',
+          gap: 8,
+          marginBottom: 12,
+        }}
+      >
+        <button
+          onClick={saveNow}
+          style={{ ...buttonBase, background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0' }}
+        >
+          {saved ? '保存しました' : '保存'}
+        </button>
+
+        <button
+          onClick={resetCurrentTab}
+          style={{ ...buttonBase, background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}
+        >
+          リセット
+        </button>
+
+        <button
+          onClick={() => copySummary(currentSummary)}
+          style={{ ...buttonBase, background: '#2563eb', color: '#ffffff' }}
+        >
+          {copied ? 'コピー完了' : 'コピー'}
+        </button>
       </div>
 
-      <div style={{
-        maxWidth:1200,
-        margin:"0 auto",
-        padding:mobile ? 12 : 20
-      }}>
+      <div
+        style={{
+          whiteSpace: 'pre-wrap',
+          fontFamily: 'monospace',
+          background: '#f8fafc',
+          padding: isMobile ? 14 : 16,
+          borderRadius: 16,
+          minHeight: isMobile ? 260 : 420,
+          border: '1px solid #e5e7eb',
+          lineHeight: 1.7,
+          fontSize: isMobile ? 12 : 13,
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {currentSummary}
+      </div>
+    </div>
+  );
 
-        <div style={{
-          display:"flex",
-          gap:8,
-          overflowX:"auto",
-          marginBottom:16
-        }}>
-          {TABS.map(v=>(
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(180deg, #eff6ff 0%, #f8fafc 40%, #ffffff 100%)',
+        paddingBottom: 100,
+        fontFamily: 'sans-serif',
+        color: '#111827',
+      }}
+    >
+      <Head>
+        <title>Goal Layer | 8-7シート</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </Head>
+
+      <div
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          backdropFilter: 'blur(10px)',
+          background: 'rgba(255,255,255,0.82)',
+          borderBottom: '1px solid #e5e7eb',
+          padding: isMobile ? 14 : 16,
+        }}
+      >
+        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+          <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 28, fontWeight: 900 }}>
+            8-7シート
+            <span style={{ color: '#2563eb', fontSize: isMobile ? 11 : 12, marginLeft: 8 }}>
+              Goal Layer
+            </span>
+          </h1>
+        </div>
+      </div>
+
+      <div
+        style={{
+          maxWidth: 1280,
+          margin: '0 auto',
+          padding: isMobile ? 12 : 20,
+        }}
+      >
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 16 }}>
+          {TABS.map((tab) => (
             <button
-              key={v}
-              onClick={()=>setTab(v)}
+              key={tab}
+              onClick={() => setTab(tab)}
               style={{
-                padding:"12px 16px",
-                border:"none",
-                borderRadius:14,
-                fontWeight:"bold",
-                cursor:"pointer",
-                whiteSpace:"nowrap",
-                background:tab===v ? "#2563eb" : "#ffffff",
-                color:tab===v ? "#fff" : "#111827",
-                boxShadow:"0 4px 12px rgba(0,0,0,0.08)"
-              }}>
-              {v}
+                border: 'none',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                padding: isMobile ? '11px 14px' : '12px 18px',
+                borderRadius: 14,
+                fontWeight: 900,
+                background: data.tab === tab ? '#2563eb' : '#ffffff',
+                color: data.tab === tab ? '#ffffff' : '#0f172a',
+                boxShadow: '0 8px 20px rgba(15, 23, 42, 0.08)',
+              }}
+            >
+              {tab}
             </button>
           ))}
         </div>
 
-        <div style={{
-          display:"grid",
-          gridTemplateColumns: mobile ? "1fr" : "1.5fr 1fr",
-          gap:18
-        }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : '1.55fr 1fr',
+            gap: 18,
+            alignItems: 'start',
+          }}
+        >
+          <div>{renderLeft()}</div>
 
-          <div>{renderContent()}</div>
-
-          {!mobile && (
-            <div>
-              <div style={card}>
-                <h3>Preview & Copy</h3>
-
-                <div style={{
-                  display:"flex",
-                  gap:8,
-                  marginBottom:12
-                }}>
-                  <button onClick={reset}
-                    style={{
-                      flex:1,
-                      padding:"12px",
-                      border:"none",
-                      borderRadius:12,
-                      background:"#fee2e2",
-                      color:"#dc2626",
-                      fontWeight:"bold",
-                      cursor:"pointer"
-                    }}>
-                    リセット
-                  </button>
-
-                  <button onClick={()=>copy(summary)}
-                    style={{
-                      flex:1,
-                      padding:"12px",
-                      border:"none",
-                      borderRadius:12,
-                      background:"#2563eb",
-                      color:"#fff",
-                      fontWeight:"bold",
-                      cursor:"pointer"
-                    }}>
-                    {copied ? "コピー完了" : "コピー"}
-                  </button>
-                </div>
-
-                <div style={{
-                  whiteSpace:"pre-wrap",
-                  fontFamily:"monospace",
-                  background:"#f8fafc",
-                  padding:16,
-                  borderRadius:16,
-                  minHeight:400,
-                  border:"1px solid #e5e7eb"
-                }}>
-                  {summary}
-                </div>
-              </div>
-            </div>
-          )}
+          {!isMobile && <div>{previewArea}</div>}
         </div>
 
-        {/* スマホは下に表示 */}
-        {mobile && (
-          <div style={{ marginTop:16 }}>
-            <div style={card}>
-              <h3>Preview & Copy</h3>
-
-              <div style={{
-                display:"flex",
-                gap:8,
-                marginBottom:12
-              }}>
-                <button onClick={reset}
-                  style={{
-                    flex:1,
-                    padding:"12px",
-                    border:"none",
-                    borderRadius:12,
-                    background:"#fee2e2",
-                    color:"#dc2626",
-                    fontWeight:"bold"
-                  }}>
-                  リセット
-                </button>
-
-                <button onClick={()=>copy(summary)}
-                  style={{
-                    flex:1,
-                    padding:"12px",
-                    border:"none",
-                    borderRadius:12,
-                    background:"#2563eb",
-                    color:"#fff",
-                    fontWeight:"bold"
-                  }}>
-                  {copied ? "コピー完了" : "コピー"}
-                </button>
-              </div>
-
-              <div style={{
-                whiteSpace:"pre-wrap",
-                fontFamily:"monospace",
-                background:"#f8fafc",
-                padding:16,
-                borderRadius:16,
-                minHeight:260,
-                border:"1px solid #e5e7eb"
-              }}>
-                {summary}
-              </div>
-            </div>
-          </div>
-        )}
-
+        {isMobile && <div style={{ marginTop: 18 }}>{previewArea}</div>}
       </div>
 
-      <footer style={{
-        textAlign:"center",
-        padding:"40px 20px",
-        color:"#94a3b8",
-        fontSize:12
-      }}>
+      <footer
+        style={{
+          textAlign: 'center',
+          padding: '40px 20px',
+          color: '#94a3b8',
+          fontSize: 12,
+        }}
+      >
         © 2026 Goal Layer. All rights reserved.
       </footer>
     </div>
