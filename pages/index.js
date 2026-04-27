@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 
 const STORAGE_KEY = 'goal-layer-safe-v2';
+const GAS_URL = https://script.google.com/macros/s/AKfycbw6mr1isemSYi7RBmNwxdqfHmleyB3scgfIN-9liWbOuXfM6zbn90AAbJrlozeHX6RPIA/exec
 const TABS = ['1日', '1週間', '1ヵ月', '1年', 'マンダラ'];
 const WEEK_DAYS = ['月', '火', '水', '木', '金', '土', '日'];
 const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
