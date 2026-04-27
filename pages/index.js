@@ -242,16 +242,40 @@ export default function Home() {
     setSaved(false);
   };
 
-  const saveNow = () => {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1500);
-    } catch (e) {
-      console.error(e);
+const saveNow = async () => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+
+    if (data.tab !== 'マンダラ') {
+      await fetch(GAS_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify({
+          sheetName: data.tab,
+          payload: {
+            title:
+              data.tab === '1日'
+                ? data.day.date
+                : data.tab === '1週間'
+                ? data.week.range
+                : data.tab === '1ヶ月'
+                ? data.month.year
+                : data.year.year,
+            content: currentSummary,
+            memo: `${data.tab}の記録`,
+          },
+        }),
+      });
     }
-  };
+
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  } catch (e) {
+    console.error(e);
+  }
+};
 
   const resetCurrentTab = () => {
     if (typeof window !== 'undefined' && !window.confirm(`${data.tab}の入力内容をリセットしますか？`)) {
